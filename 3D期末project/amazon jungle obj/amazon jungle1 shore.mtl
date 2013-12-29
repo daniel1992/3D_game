@@ -1,0 +1,18 @@
+# Exported from Bryce 6.0
+
+newmtl material_1
+    Ns 199
+    d 1.000000
+    illum 2
+    #bump_amt 0.406780
+    #refl_amt 0.000000
+    #amb_amt 0.000000
+    #dif_amt 1.000000
+    #spec_amt 0.000000
+    Ka 0.000000 0.000000 0.000000
+    Kd 0.498039 0.498039 0.498039
+    Ks 0.000000 0.000000 0.000000
+    Tf 1.000000 1.000000 1.000000
+    map_Ka amazon jungle1 shore_mtl1_ambicol.bmp
+    map_Kd amazon jungle1 shore_mtl1_diffcol.bmp
+    map_Bump amazon jungle1 shore_mtl1_bumpamt.bmp
