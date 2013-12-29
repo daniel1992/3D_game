@@ -4,77 +4,53 @@
 #include <math.h>
 #include "glm.h"
 
-GLMmodel *MODEL;
-
-
-#define NUM_SPHERES      50
-GLFrame    spheres[NUM_SPHERES];
-GLFrame    frameCamera;
-GLFrame    frametorus;
-GLFrame    world;
-GLFrame    shadow;
-
 //蟲子
+//Update.2013/12/29:完成基本運動方式，改寫成class
 
-float delta=0;
-float angle[6][5];
-int state=0;
-int cond=0;
-int head=0;
-int antenna=-30;
-float speed=0.5f;
-float xro=0.5;
-float yro=0;
-static GLfloat xRot = 0.0f;
-static GLfloat yRot = 0.0f;
-float flip=0;
-float movex=0;
-float movey=0;
-float movez=0;
-
-
-GLfloat  ambientLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-GLfloat  ambientLightg[] = { 0.0f, 0.9f, 0.0f, 1.0f };
-GLfloat  diffuseLight[] = { 0.7f, 0.7f, 0.7f, 1.0f };
-GLfloat  diffuseLightg[] = { 0.0f, 0.5f, 0.0f, 1.0f };
-GLfloat  specular[] = { 1.0f, 1.0f, 1.0f, 1.0f};
-GLfloat  specularg[] = { 0.0f, 2.0f, 0.0f, 1.0f};
-GLfloat	 lightPos[] = { 0.0f, 1.9f,0.8f, 0.0f };
-GLfloat	 lightPos2[] = { 0.0f, 1.9f,0.8f, 1.0f };
-GLfloat	 lightPos3[] = { 0.0f, 1.9f,0.8f, 1.0f };
-GLfloat	 dlightPos[] = { 0.0f, 1.9f,0.8f, 0.0f };
-GLfloat  specref[] =  { 1.0f, 1.0f, 1.0f, 1.0f };
-float temp=lightPos[1];
-
-M3DMatrix44f shadowMat;
-
-
-
-//////////////////////////////////////////////////////////////////
-// This function does any needed initialization on the rendering
-// context.
-void SetupRC()
+class bug
 {
-    int iSphere;
+public:
+    bug();
+    ~bug();
+    void action();
+    void attack(int i);
+    void drawbug(int i);
+    void attacked(int i);
+    void crawl(int i);
+    void die(int i);
+    int sattack;
+    int sattacked;
+    int scrawl;
+    int sdie;
+    float angle[6][5];
+private:
+    float flip;
+    float movex;
+    float movey;
+    float movez;
+    int head;
+    int antenna;
+    int attacktimer;
+    int attackedtimer;
+    int dietimer;
+    int crawltimer;
 
-    // Bluish background
-    glClearColor(0.0f, 0.0f, .80f, 1.0f );
 
-    // Draw everything as wire frame
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-
-    // Randomly place the sphere inhabitants
-
-    frametorus.SetOrigin(0.0f, 0.34f, -2.5);
-    world.SetOrigin(0.0f, 0.34f, -2.5);
-    shadow.SetOrigin(0.0f, 0.34f, -2.5);
-    frameCamera.SetOrigin(0,0.7,1.5);
-    frametorus.RotateLocalX(-3.14159/2);
-    world.RotateLocalX(-3.14159/2);
-    shadow.RotateLocalX(-3.14159/2);
-
+};
+bug::bug(){
+    flip=0;
+    sdie=0;
+    scrawl=0;
+    dietimer=0;
+    crawltimer=0;
+    attacktimer=0;
+    attackedtimer=0;
+    movex=0;
+    movey=0;
+    movez=0;
+    head=0;
+    antenna=-30;
+    sattack=0;
     for(int i=0; i<6; i++)
     {
         if(i==0||i==3)
@@ -94,55 +70,9 @@ void SetupRC()
         angle[i][3]=50;
         angle[i][4]=0;
     }
-
-    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
-    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
-    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
-    glCullFace(GL_BACK);
-    glEnable(GL_MULTISAMPLE_ARB);
-
-
-    glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
-    glLightfv(GL_LIGHT0,GL_DIFFUSE,diffuseLight);
-    glLightfv(GL_LIGHT0,GL_SPECULAR,specular);
-    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
-
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-    glMaterialfv(GL_FRONT, GL_SPECULAR,specref);
-    glMateriali(GL_FRONT,GL_SHININESS,128);
-
-
-
-    glEnable(GL_NORMALIZE);
-
 }
-
-
-
-///////////////////////////////////////////////////////////
-// Draw a gridded ground
-void DrawGround(void)
-{
-    GLfloat fExtent = 20.0f;
-    GLfloat fStep = 1.0f;
-    GLfloat y = -0.4f;
-    GLint iLine;
-
-    glBegin(GL_QUADS);
-
-    glColor3ub(0,255,0);
-    glVertex3f(-100,-100 ,-0.4 );
-    glVertex3f(100, -100, -0.4);    // Draw Z lines
-    glColor3ub(0,120,0);
-    glVertex3f(100, 100, -0.4);
-    glVertex3f(-100, 100, -0.4);
-
-    glEnd();
-}
-
-
-void drawbug(int color)
+bug::~bug(){}
+void bug::drawbug(int color)
 {
 
     float x,y,z,x2,y2,y3,y4,z2,z3,z4;
@@ -158,6 +88,8 @@ void drawbug(int color)
     glLineWidth(1.5);
 
     glTranslatef(movex,movey,movez);
+
+    //glutSolidSphere(0.5,10,10);
 
     glRotatef(flip,0,1,0);
 
@@ -389,7 +321,322 @@ void drawbug(int color)
 
 
 }
+void bug::action(){
+    if(sdie==1) {
+        die(dietimer);
+    }
+    else if(sattacked==1) {
+        attacked(attackedtimer);
+    }
+    else if(sattack==1) {
+        attack(attacktimer);
+    }
+    else if(scrawl=1){
+        crawl(crawltimer);
+    }
+}
+void bug::attack(int i) {
 
+    if(i<50) {
+
+        if(i<25) {
+            movex-=0.006;
+            for(int j=0;j<6;j++) {
+
+                    angle[j][4]-=0.6;
+
+            }
+        }
+        else {
+            movex+=0.006;
+            for(int j=0;j<6;j++) {
+
+                    angle[j][4]+=0.6;
+
+            }
+        }
+        attacktimer++;
+
+    }
+    else {
+        attacktimer=0;
+        sattack=0;
+    }
+    glutPostRedisplay();
+}
+void bug::attacked(int i) {
+
+    if(i<100) {
+
+        if(i<25) {
+            movex+=0.006;
+            for(int j=0;j<6;j++) {
+
+                    angle[j][4]+=0.6;
+
+            }
+        }
+        else if(i<75) {
+
+        }
+        else {
+            movex-=0.006;
+            for(int j=0;j<6;j++) {
+
+                    angle[j][4]-=0.6;
+
+            }
+        }
+        attackedtimer++;
+
+    }
+    else {
+        sattacked=0;
+        attackedtimer=0;
+    }
+    glutPostRedisplay();
+}
+void bug::die(int i)
+{
+    if(i<200)
+    {
+        if(i<50)
+        {
+            flip=3.6*i;
+        }
+        else
+        {
+            flip=180;
+            for(int j=0; j<6; j++)
+            {
+                if(j%2==0)
+                {
+                    angle[j][2]=60+30*sin(0.314159*2/5*i);
+                    angle[j][3]=50+30*sin(0.314159*2/5*i);
+                }
+                else{
+                    angle[j][2]=60-30*sin(0.314159*2/5*i);
+                    angle[j][3]=50-30*sin(0.314159*2/5*i);
+                }
+            }
+        }
+        dietimer++;
+        //shadow.RotateLocalZ(3.14159/20.0);
+    }
+    else {
+        sdie=0;
+        flip=0;
+        dietimer=0;
+            for(int i=0; i<6; i++)
+    {
+        if(i==0||i==3)
+        {
+            angle[i][0]=-30;
+        }
+        else if(i==1||i==4)
+        {
+            angle[i][0]=0;
+        }
+        else
+        {
+            angle[i][0]=30;
+        }
+        angle[i][1]=-20;
+        angle[i][2]=60;
+        angle[i][3]=50;
+        angle[i][4]=0;
+    }
+    }
+    glutPostRedisplay();
+}
+void bug::crawl(int i)
+{
+
+    float t=1;
+
+    if(i<60)
+    {
+
+        t=2*sin(3.14159/30*i);
+
+
+        angle[0][0]=-30+10*t;
+        angle[2][0]=60+10*t;
+        angle[3][0]=-60+10*t;
+        angle[5][0]=30+10*t;
+        angle[1][0]=10-8*t;
+        angle[4][0]=-10-8*t;
+        angle[5][1]=-20-10*t;
+        angle[5][2]=60+5*t;
+        angle[5][3]=50+5*t;
+        angle[5][4]=4*t;
+        angle[4][1]=-20+5*t;
+        //angle[4][2]=60+5*t;
+        //angle[4][3]=50+5*t;
+        angle[4][4]=-10*t;
+        angle[3][1]=-20-10*t;
+        angle[3][2]=60+5*t;
+        angle[3][3]=50+5*t;
+        angle[3][4]=2*t;
+        angle[0][1]=-20+10*t;
+        angle[0][2]=60+5*t;
+        angle[0][3]=50+5*t;
+        angle[0][4]=-4*t;
+        angle[1][1]=-20-5*t;
+        //angle[1][2]=60+5*t;
+        //angle[1][3]=50+5*t;
+        angle[1][4]=10*t;
+        angle[2][1]=-20+10*t;
+        angle[2][2]=60+5*t;
+        angle[2][3]=50+5*t;
+        angle[2][4]=-2*t;
+
+        crawltimer++;
+
+    }
+    else
+    {
+        scrawl=0;
+        crawltimer=0;
+        //state=0;
+    }
+    glutPostRedisplay();
+}
+
+
+#define NUM_SPHERES      50
+GLFrame    spheres[NUM_SPHERES];
+GLFrame    frameCamera;
+GLFrame    frametorus;
+GLFrame    world;
+GLFrame    shadow;
+
+float delta=0;
+float angle[6][5];
+int state=0;
+int cond=0;
+int head=0;
+int antenna=-30;
+float speed=0.5f;
+float xro=0.5;
+float yro=0;
+static GLfloat xRot = 0.0f;
+static GLfloat yRot = 0.0f;
+float flip=0;
+float movex=0;
+float movey=0;
+float movez=0;
+
+bug test[2];
+
+GLfloat  ambientLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+GLfloat  ambientLightg[] = { 0.0f, 0.9f, 0.0f, 1.0f };
+GLfloat  diffuseLight[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+GLfloat  diffuseLightg[] = { 0.0f, 0.5f, 0.0f, 1.0f };
+GLfloat  specular[] = { 1.0f, 1.0f, 1.0f, 1.0f};
+GLfloat  specularg[] = { 0.0f, 2.0f, 0.0f, 1.0f};
+GLfloat	 lightPos[] = { 0.0f, 1.9f,0.8f, 0.0f };
+GLfloat	 lightPos2[] = { 0.0f, 1.9f,0.8f, 1.0f };
+GLfloat	 lightPos3[] = { 0.0f, 1.9f,0.8f, 1.0f };
+GLfloat	 dlightPos[] = { 0.0f, 1.9f,0.8f, 0.0f };
+GLfloat  specref[] =  { 1.0f, 1.0f, 1.0f, 1.0f };
+float temp=lightPos[1];
+
+M3DMatrix44f shadowMat;
+
+GLuint  textureObjects[1];
+
+
+//////////////////////////////////////////////////////////////////
+// This function does any needed initialization on the rendering
+// context.
+void SetupRC()
+{
+    int iSphere;
+
+    // Bluish background
+    glClearColor(0.0f, 0.0f, .80f, 1.0f );
+
+    // Draw everything as wire frame
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
+    // Randomly place the sphere inhabitants
+
+    frametorus.SetOrigin(0.0f, 0.34f, -2.5);
+    world.SetOrigin(0.0f, 0.34f, -2.5);
+    shadow.SetOrigin(0.0f, 0.34f, -2.5);
+    frameCamera.SetOrigin(0,0.7,1.5);
+    frametorus.RotateLocalX(-3.14159/2);
+    world.RotateLocalX(-3.14159/2);
+    shadow.RotateLocalX(-3.14159/2);
+
+    for(int i=0; i<6; i++)
+    {
+        if(i==0||i==3)
+        {
+            angle[i][0]=-30;
+        }
+        else if(i==1||i==4)
+        {
+            angle[i][0]=0;
+        }
+        else
+        {
+            angle[i][0]=30;
+        }
+        angle[i][1]=-20;
+        angle[i][2]=60;
+        angle[i][3]=50;
+        angle[i][4]=0;
+    }
+
+    glEnable(GL_DEPTH_TEST);	// Hidden surface removal
+    glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
+    glEnable(GL_CULL_FACE);		// Do not calculate inside of jet
+    glCullFace(GL_BACK);
+    glEnable(GL_MULTISAMPLE_ARB);
+
+
+    glLightfv(GL_LIGHT0,GL_AMBIENT,ambientLight);
+    glLightfv(GL_LIGHT0,GL_DIFFUSE,diffuseLight);
+    glLightfv(GL_LIGHT0,GL_SPECULAR,specular);
+    glLightfv(GL_LIGHT0,GL_POSITION,lightPos);
+
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glMaterialfv(GL_FRONT, GL_SPECULAR,specref);
+    glMateriali(GL_FRONT,GL_SHININESS,128);
+
+
+
+    glEnable(GL_NORMALIZE);
+
+}
+
+
+
+///////////////////////////////////////////////////////////
+// Draw a gridded ground
+void DrawGround(void)
+{
+    GLfloat fExtent = 20.0f;
+    GLfloat fStep = 1.0f;
+    GLfloat y = -0.4f;
+    GLint iLine;
+
+    glBegin(GL_QUADS);
+
+    glColor3ub(0,255,0);
+    glVertex3f(-100,-100 ,-0.4 );
+    glVertex3f(100, -100, -0.4);    // Draw Z lines
+    glColor3ub(0,120,0);
+    glVertex3f(100, 100, -0.4);
+    glVertex3f(-100, 100, -0.4);
+
+    glEnd();
+}
 
 
 // Called to draw scene
@@ -435,7 +682,7 @@ void RenderScene(void)
     glDisable(GL_DEPTH_TEST);
     m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos);
     glMultMatrixf((GLfloat *)shadowMat);
-    drawbug(1);
+    test[0].drawbug(1);
     glEnable(GL_DEPTH_TEST);
     glPopMatrix();//1
 
@@ -452,7 +699,16 @@ void RenderScene(void)
 
     glPushMatrix();
     world.ApplyActorTransform();
-    drawbug(0);
+    glTranslatef(1,0,0);
+    test[0].drawbug(0);
+    test[0].action();
+    glPopMatrix();
+    glPushMatrix();
+    world.ApplyActorTransform();
+    glTranslatef(-1,0,0);
+    glRotatef(180,0,0,1);
+    test[1].drawbug(0);
+    test[1].action();
     glDisable(GL_LIGHTING);
     glPopMatrix();//2
 
@@ -474,192 +730,6 @@ void RenderScene(void)
     // Do the buffer Swap
     glutSwapBuffers();
 }
-
-void die(int i)
-{
-    if(i<40)
-    {
-        if(i<10)
-        {
-            flip=18*i;
-        }
-        else
-        {
-            flip=180;
-            for(int j=0; j<6; j++)
-            {
-                if(j%2==0)
-                {
-                    angle[j][2]=60+30*sin(3.14159/5*i);
-                    angle[j][3]=50+30*sin(3.14159/5*i);
-                }
-                else{
-                    angle[j][2]=60-30*sin(3.14159/5*i);
-                    angle[j][3]=50-30*sin(3.14159/5*i);
-                }
-            }
-        }
-                i++;
-        //shadow.RotateLocalZ(3.14159/20.0);
-        glutTimerFunc(40,die,i);
-    }
-    else {
-        state=0;
-        flip=0;
-            for(int i=0; i<6; i++)
-    {
-        if(i==0||i==3)
-        {
-            angle[i][0]=-30;
-        }
-        else if(i==1||i==4)
-        {
-            angle[i][0]=0;
-        }
-        else
-        {
-            angle[i][0]=30;
-        }
-        angle[i][1]=-20;
-        angle[i][2]=60;
-        angle[i][3]=50;
-        angle[i][4]=0;
-    }
-    }
-    glutPostRedisplay();
-}
-void crawl(int i)
-{
-
-    int t=1;
-
-    if(i<40)
-    {
-
-
-        frametorus.RotateLocalZ(-3.14159/20.0);
-        //xRot+=-9;
-
-        lightPos[1]=temp*cos(-3.14159/20.0*i);
-        lightPos[0]=temp*sin(-3.14159/19.5*i);
-
-        shadow.RotateLocalZ(3.14159/20.0);
-        //yRot+=-1;
-        frametorus.MoveRight(-0.1f);
-        shadow.MoveRight(0.1f);
-
-        if(i%10<5)
-        {
-            t=1;
-        }
-        else
-        {
-            t=-1;
-        }
-
-
-        angle[0][0]+=8*t;
-        angle[2][0]+=8*t;
-        angle[3][0]+=8*t;
-        angle[5][0]+=8*t;
-        angle[1][0]-=4*t;
-        angle[4][0]-=4*t;
-        angle[5][1]-=5*t;
-        angle[5][2]+=5*t;
-        angle[5][3]+=5*t;
-        angle[5][4]+=8*t;
-        angle[4][1]+=5*t;
-        angle[4][2]-=5*t;
-        angle[4][3]-=5*t;
-        angle[4][4]-=8*t;
-        angle[3][1]-=5*t;
-        angle[3][2]+=5*t;
-        angle[3][3]+=5*t;
-        angle[3][4]+=3*t;
-        angle[0][1]+=5*t;
-        angle[0][2]-=5*t;
-        angle[0][3]-=5*t;
-        angle[0][4]-=8*t;
-        angle[1][1]-=5*t;
-        angle[1][2]+=5*t;
-        angle[1][3]+=5*t;
-        angle[1][4]+=6*t;
-        angle[2][1]+=5*t;
-        angle[2][2]-=5*t;
-        angle[2][3]-=5*t;
-        angle[2][4]-=3*t;
-
-        i++;
-        //shadow.RotateLocalZ(3.14159/20.0);
-        glutTimerFunc(40,crawl,i);
-    }
-    else
-    {
-        lightPos[0]=0;
-        lightPos[1]=temp;
-        state=0;
-    }
-    glutPostRedisplay();
-}
-
-void roll(int i)
-{
-    if(i<80)
-    {
-        if(i<20)
-        {
-            for(int j=0; j<6; j++)
-            {
-                angle[j][1]+=5;
-                angle[j][2]+=2;
-
-            }
-        }
-        else if(i>=20&&i<60)
-        {
-            if(i<40)
-            {
-
-                //glLoadIdentity();
-                xro+=3.14159/5.0;
-                //frametorus.RotateLocalX(-3.14159/5.0*(i-20));
-                //glRotatef(0.5,1,0,0);
-                //glLoadIdentity();
-                frametorus.MoveUp(0.2);
-                shadow.MoveUp(0.2);
-                //frametorus.RotateLocalX(3.14159/5.0*(i-19));
-                //glTranslatef(0,0,0.1);
-            }
-            else
-            {
-
-                //glLoadIdentity();
-                //frametorus.RotateLocalX(3.14159/5.0*(i-40));
-                //glLoadIdentity();
-                frametorus.MoveUp(-0.2);
-                shadow.MoveUp(-0.2);
-                //frametorus.RotateLocalX(-3.14159/5.0*(i-39));
-            }
-        }
-        else
-        {
-            for(int j=0; j<6; j++)
-            {
-                angle[j][1]-=5;
-                angle[j][2]-=2;
-
-            }
-        }
-        i++;
-        glutTimerFunc(40,roll,i);
-    }
-    else
-    {
-        state=0;
-    }
-    glutPostRedisplay();
-}
-
 void myKeys(unsigned char key, int x, int y)
 {
     switch(key)
@@ -715,7 +785,8 @@ void myKeys(unsigned char key, int x, int y)
         break;
 
     case'q':
-        if(state==0)
+        test[0].sdie=1;
+        /*if(state==0)
         {
             angle[1][0]=0;
             angle[4][0]=0;
@@ -725,9 +796,25 @@ void myKeys(unsigned char key, int x, int y)
             angle[5][0]=30;
             state=1;
             die(0);
-        }
+        }*/
+        break;
+    case'e':
+        test[0].sattacked=1;
+        /*if(state==0)
+        {
+            angle[1][0]=0;
+            angle[4][0]=0;
+            angle[0][0]=-30;
+            angle[3][0]=-30;
+            angle[2][0]=30;
+            angle[5][0]=30;
+            state=1;
+            attacked(0);
+        }*/
+        break;
     case' ':
-        if(state==0)
+        test[0].scrawl=1;
+        /*if(state==0)
         {
             state=1;
             angle[1][0]=15;
@@ -743,7 +830,7 @@ void myKeys(unsigned char key, int x, int y)
             angle[3][0]=-30;
             angle[2][0]=30;
             angle[5][0]=30;
-        }
+        }*/
         break;
     case 'r':
         if(state==0)
@@ -755,7 +842,7 @@ void myKeys(unsigned char key, int x, int y)
             angle[3][0]=-30;
             angle[2][0]=30;
             angle[5][0]=30;
-            roll(0);
+            //roll(0);
         }
         break;
 
@@ -817,18 +904,18 @@ void myKeys(unsigned char key, int x, int y)
             angle[5][3]+=2;
         break;
     case 'c':
-        if(speed==0.5)
+        test[0].sattack=1;
+        /*if(state==0)
         {
-            speed=1.5;
-        }
-        else if(speed==1.5)
-        {
-            speed=0;
-        }
-        else
-        {
-            speed=0.5;
-        }
+            angle[1][0]=0;
+            angle[4][0]=0;
+            angle[0][0]=-30;
+            angle[3][0]=-30;
+            angle[2][0]=30;
+            angle[5][0]=30;
+            state=1;
+            attack(0);
+        }*/
         break;
     }
     glutPostRedisplay();
