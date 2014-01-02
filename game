@@ -1,43 +1,63 @@
+//蟲子
+//Update.2013/12/29:完成基本運動方式，改寫成class
+//Update.2014/01/02:完成自動追蹤AI以及碰撞偵測
+
 #include "../../shared/gltools.h"	// OpenGL toolkit
 #include "../../shared/math3d.h"    // 3D Math Library
 #include "../../shared/glframe.h"   // Frame class
 #include <math.h>
 #include "glm.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-//蟲子
-//Update.2013/12/29:完成基本運動方式，改寫成class
+#define BUG_NUM      40
+float obstaclex[BUG_NUM]= {0};
+float obstacley[BUG_NUM]= {0};
 
 class bug
 {
 public:
     bug();
     ~bug();
-    void action();
+    void action(float x,float y);
     void attack(int i);
     void drawbug(int i);
     void attacked(int i);
     void crawl(int i);
     void die(int i);
+    void moving(double targetx,double targety);
+    void setlocation(float x,float y,float z);
+    void setnumber(int i);
+    float getx();
+    float gety();
     int sattack;
     int sattacked;
     int scrawl;
     int sdie;
-    float angle[6][5];
+
 private:
+    float angle[6][5];
     float flip;
+    double turn;
     float movex;
     float movey;
     float movez;
+    float speed;
     int head;
     int antenna;
     int attacktimer;
     int attackedtimer;
     int dietimer;
     int crawltimer;
+    int health;
+    int damage;
+    int number;
 
 
 };
-bug::bug(){
+bug::bug()
+{
     flip=0;
     sdie=0;
     scrawl=0;
@@ -51,6 +71,9 @@ bug::bug(){
     head=0;
     antenna=-30;
     sattack=0;
+    health=100;
+    damage=5;
+    speed=0.005;
     for(int i=0; i<6; i++)
     {
         if(i==0||i==3)
@@ -71,61 +94,76 @@ bug::bug(){
         angle[i][4]=0;
     }
 }
-bug::~bug(){}
+bug::~bug() {}
+float bug::getx()
+{
+    return movex;
+}
+float bug::gety()
+{
+    return movey;
+}
+void bug::setnumber(int i)
+{
+    number=i;
+}
 void bug::drawbug(int color)
 {
 
     float x,y,z,x2,y2,y3,y4,z2,z3,z4;
     float rad=3.14159/180.0;
 
-    if(color == 0)
+    /*if(color == 0)
         glColor3ub(128, 128, 128);
     else
-        glColor3ub(0,0,0);
+        glColor3ub(0,0,0);*/
 
     M3DVector3f vNormal;
 
     glLineWidth(1.5);
 
+
+
     glTranslatef(movex,movey,movez);
 
     //glutSolidSphere(0.5,10,10);
-
+    glRotatef(turn,0,0,1);
+    glRotatef(180,0,0,1);
     glRotatef(flip,0,1,0);
 
 
     glBegin(GL_QUAD_STRIP);//body
 
-    for(int i=5; i<=135; i+=5)
+    for(int i=30; i<=120; i+=30)
     {
 
         x=0.4*cos(rad*i);
-        x2=0.4*cos(rad*(i-5));
-        for(int j=5; j<360; j+=5)
+        x2=0.4*cos(rad*(i-30));
+        for(int j=30; j<=360; j+=30)
         {
 
             if(j<=180)
             {
                 y=0.25*sin(rad*i)*cos(rad*j);
-                y2=0.25*sin(rad*(i-5))*cos(rad*j);
-                y3=0.25*sin(rad*(i))*cos(rad*(j-5));
-                y4=0.25*sin(rad*(i-5))*cos(rad*(j-5));
+                y2=0.25*sin(rad*(i-30))*cos(rad*j);
+                y3=0.25*sin(rad*(i))*cos(rad*(j-30));
+                y4=0.25*sin(rad*(i-30))*cos(rad*(j-30));
                 z=0.25*sin(rad*i)*0.8*sin(rad*j);
-                z2=0.25*sin(rad*(i-5))*0.8*sin(rad*j);
-                z3=0.25*sin(rad*(i))*0.8*sin(rad*(j-5));
-                z4=0.25*sin(rad*(i-5))*0.8*sin(rad*(j-5));
+                z2=0.25*sin(rad*(i-30))*0.8*sin(rad*j);
+                z3=0.25*sin(rad*(i))*0.8*sin(rad*(j-30));
+                z4=0.25*sin(rad*(i-30))*0.8*sin(rad*(j-30));
 
             }
             else
             {
                 y=0.25*sin(rad*i)*0.8*cos(rad*j);
-                y2=0.25*sin(rad*(i-5))*0.8*cos(rad*j);
-                y3=0.25*sin(rad*(i))*0.8*cos(rad*(j-5));
-                y4=0.25*sin(rad*(i-5))*0.8*cos(rad*(j-5));
+                y2=0.25*sin(rad*(i-30))*0.8*cos(rad*j);
+                y3=0.25*sin(rad*(i))*0.8*cos(rad*(j-30));
+                y4=0.25*sin(rad*(i-30))*0.8*cos(rad*(j-30));
                 z=0.25*sin(rad*i)*0.8*0.6*sin(rad*j);
-                z2=0.25*sin(rad*(i-5))*0.8*0.6*sin(rad*j);
-                z3=0.25*sin(rad*(i))*0.8*0.6*sin(rad*(j-5));
-                z4=0.25*sin(rad*(i-5))*0.8*0.6*sin(rad*(j-5));
+                z2=0.25*sin(rad*(i-30))*0.8*0.6*sin(rad*j);
+                z3=0.25*sin(rad*(i))*0.8*0.6*sin(rad*(j-30));
+                z4=0.25*sin(rad*(i-30))*0.8*0.6*sin(rad*(j-30));
             }
 
             M3DVector3f vPoints[3] = {{ x, y, z },
@@ -321,76 +359,114 @@ void bug::drawbug(int color)
 
 
 }
-void bug::action(){
-    if(sdie==1) {
+void bug::action(float x,float y)
+{
+
+
+    if(sdie==1)
+    {
         die(dietimer);
     }
-    else if(sattacked==1) {
+    else if(sattacked==1)
+    {
         attacked(attackedtimer);
     }
-    else if(sattack==1) {
+    else if(sattack==1)
+    {
         attack(attacktimer);
     }
-    else if(scrawl=1){
+    else
+    {
         crawl(crawltimer);
+        moving(x,y);
     }
 }
-void bug::attack(int i) {
+void bug::attack(int i)
+{
 
-    if(i<50) {
+    if(i<100)
+    {
 
-        if(i<25) {
-            movex-=0.006;
-            for(int j=0;j<6;j++) {
+        if(i<25)
+        {
+            movex-=0.006*cos(turn/180*3.1415926);
+            movey-=0.006*sin(turn/180*3.1415926);
+            for(int j=0; j<6; j++)
+            {
 
-                    angle[j][4]-=0.6;
+                angle[j][4]+=0.6;
 
             }
         }
-        else {
-            movex+=0.006;
-            for(int j=0;j<6;j++) {
+        else if(i<75)
+        {
+            movex+=0.006*cos(turn/180*3.1415926);
+            movey+=0.006*sin(turn/180*3.1415926);
+            for(int j=0; j<6; j++)
+            {
 
-                    angle[j][4]+=0.6;
+                angle[j][4]-=0.6;
+
+            }
+        }
+        else
+        {
+            movex-=0.006*cos(turn/180*3.1415926);
+            movey-=0.006*sin(turn/180*3.1415926);
+            for(int j=0; j<6; j++)
+            {
+
+                angle[j][4]+=0.6;
 
             }
         }
         attacktimer++;
 
     }
-    else {
+    else
+    {
         attacktimer=0;
         sattack=0;
     }
     glutPostRedisplay();
 }
-void bug::attacked(int i) {
+void bug::attacked(int i)
+{
 
-    if(i<100) {
+    if(i<100)
+    {
 
-        if(i<25) {
-            movex+=0.006;
-            for(int j=0;j<6;j++) {
+        if(i<25)
+        {
+            movex-=0.006*cos(turn/180*3.1415926);
+            movey-=0.006*sin(turn/180*3.1415926);
+            for(int j=0; j<6; j++)
+            {
 
-                    angle[j][4]+=0.6;
+                angle[j][4]+=0.6;
 
             }
         }
-        else if(i<75) {
+        else if(i<75)
+        {
 
         }
-        else {
-            movex-=0.006;
-            for(int j=0;j<6;j++) {
+        else
+        {
+            movex+=0.006*cos(turn/180*3.1415926);
+            movey+=0.006*sin(turn/180*3.1415926);
+            for(int j=0; j<6; j++)
+            {
 
-                    angle[j][4]-=0.6;
+                angle[j][4]-=0.6;
 
             }
         }
         attackedtimer++;
 
     }
-    else {
+    else
+    {
         sattacked=0;
         attackedtimer=0;
     }
@@ -414,7 +490,8 @@ void bug::die(int i)
                     angle[j][2]=60+30*sin(0.314159*2/5*i);
                     angle[j][3]=50+30*sin(0.314159*2/5*i);
                 }
-                else{
+                else
+                {
                     angle[j][2]=60-30*sin(0.314159*2/5*i);
                     angle[j][3]=50-30*sin(0.314159*2/5*i);
                 }
@@ -423,29 +500,30 @@ void bug::die(int i)
         dietimer++;
         //shadow.RotateLocalZ(3.14159/20.0);
     }
-    else {
+    else
+    {
         sdie=0;
         flip=0;
         dietimer=0;
-            for(int i=0; i<6; i++)
-    {
-        if(i==0||i==3)
+        for(int i=0; i<6; i++)
         {
-            angle[i][0]=-30;
+            if(i==0||i==3)
+            {
+                angle[i][0]=-30;
+            }
+            else if(i==1||i==4)
+            {
+                angle[i][0]=0;
+            }
+            else
+            {
+                angle[i][0]=30;
+            }
+            angle[i][1]=-20;
+            angle[i][2]=60;
+            angle[i][3]=50;
+            angle[i][4]=0;
         }
-        else if(i==1||i==4)
-        {
-            angle[i][0]=0;
-        }
-        else
-        {
-            angle[i][0]=30;
-        }
-        angle[i][1]=-20;
-        angle[i][2]=60;
-        angle[i][3]=50;
-        angle[i][4]=0;
-    }
     }
     glutPostRedisplay();
 }
@@ -498,14 +576,192 @@ void bug::crawl(int i)
     {
         scrawl=0;
         crawltimer=0;
-        //state=0;
     }
     glutPostRedisplay();
 }
+void bug::setlocation(float x,float y,float z)
+{
+    movex=x;
+    movey=y;
+    movez=z;
+}
+void bug::moving(double targetx, double targety)
+{
+
+    double futurex=targetx-movex;
+    double futurey=targety-movey;
+    double otherx;
+    double othery;
+    double otherturn;
+    int areaclear;
+    int cyclecount;
+    float originx=movex;
+    float originy=movey;
+    float faketurn;
+
+    turn=atan(futurey/futurex)/3.1415926*180;
+
+    if(futurex<0)
+    {
+        turn+=180;
+    }
+    if(turn<0)
+    {
+        turn+=360;
+    }
+
+    faketurn=turn;
+
+    if(pow(futurex,2)+pow(futurey,2)>1)
+    {
+        while(1)
+        {
+            movex+=cos(faketurn/180*3.1415926)*speed;
+            movey+=sin(faketurn/180*3.1415926)*speed;
+            /*if (cyclecount>100)
+            {
+                movex=movex+cos((turn-180)/180*3.1415926-3.1415926/10)*speed;
+                movey=movey+sin((turn-180)/180*3.1415926-3.1415926/10)*speed;
+                /*if(cyclecount%2==0)
+                {
+                    movex=movex-cos(turn/180*3.1415926-3.1415926/18*(cyclecount%100+2));
+                    movey=movey-sin(turn/180*3.1415926-3.1415926/18*(cyclecount%100+2));
+                }
+                else
+                {
+                    movex=movex-cos(turn/180*3.1415926+3.1415926/18*(cyclecount%100+2));
+                    movey=movey-sin(turn/180*3.1415926+3.1415926/18*(cyclecount%100+2));
+                }
+            }*/
+
+            areaclear=1;
+            cyclecount++;
+            for(int i=0; i<BUG_NUM; i++)
+            {
 
 
-#define NUM_SPHERES      50
-GLFrame    spheres[NUM_SPHERES];
+                if((pow(obstaclex[i]-movex,2)+pow(obstacley[i]-movey,2)<1)&&i!=number)
+                {
+
+
+                    //printf("%lf\n",pow(obstaclex[i]-movex,2)+pow(obstacley[i]-movey,2));
+
+                    otherx=obstaclex[i]-movex;
+                    othery=obstacley[i]-movey;
+
+                    otherturn=atan(othery/otherx)/3.1415926*180;
+
+
+                    if(otherx<0)
+                    {
+                        otherturn+=180;
+                    }
+                    if(otherturn<0)
+                    {
+                        otherturn+=360;
+                    }
+                    //if(i==6||i==0) {
+                        printf("%d,%lf,%lf,%lf,%lf\n",number,obstaclex[i],obstacley[i],movex,movey);
+                    //}
+
+                    if((otherturn-turn>100&&otherturn-turn<260)||(otherturn-turn<-100&&otherturn-turn>-260))
+                        continue;
+                    areaclear=0;
+
+                    //printf("%d\n",cyclecount);
+
+                    if (cyclecount>100)
+                    {
+                        movex=originx-otherx*0.2*(cyclecount%100+1);
+                        movey=originy-othery*0.2*(cyclecount%100+1);
+                        //continue;
+                        /*if(otherturn<faketurn){
+                        movex=obstaclex[i]+0.5;
+                        movey=obstacley[i]+0.5;
+                        }
+                        else {
+                        movex=obstaclex[i]+0.5;
+                        movey=obstacley[i]+0.5;
+                        }*/
+                        /*if(cyclecount%2==0)
+                        {
+                            movex=movex-cos(turn/180*3.1415926-3.1415926/18*(cyclecount%100+2));
+                            movey=movey-sin(turn/180*3.1415926-3.1415926/18*(cyclecount%100+2));
+                        }
+                        else
+                        {
+                            movex=movex-cos(turn/180*3.1415926+3.1415926/18*(cyclecount%100+2));
+                            movey=movey-sin(turn/180*3.1415926+3.1415926/18*(cyclecount%100+2));
+                        }*/
+                    }
+                    if(otherturn==0)
+                    {
+                        if(faketurn>180)
+                        {
+                            faketurn-=45;
+                        }
+                        else
+                        {
+                            faketurn+=45;
+                        }
+
+                    }
+                    else if(otherturn>=faketurn)
+                    {
+                        faketurn-=45;
+                    }
+                    else
+                    {
+                        faketurn+=45;
+                    }
+
+                    //break;
+
+                    /*if((turn<180&&turn>=0&&obstaclex[i]-targetx=>0)||((turn>=180||turn<0)&&obstaclex[i]-targetx<=0))
+                        turn+=10;
+                    else {
+                        turn-=10;
+                    }
+                    break;
+                    }*/
+
+
+                }
+
+
+            }
+            /*for(int j; j<BUG_NUM; j++)
+            {
+                if(obstaclex[j]==movex)
+                    if(obstacley[j]==movey)
+                    {
+                        areaclear=0;
+                    }
+            }*/
+            if(areaclear==1||cyclecount>5000)
+            {
+                cyclecount=0;
+                break;
+            }
+            /*else if (cyclecount>100) {
+                while()
+                movex=originx;
+                movey=originy;
+                cyclecount=0;
+                break;
+            }*/
+        }
+    }
+
+    else
+    {
+        sattack=1;
+    }
+}
+
+
+
+
 GLFrame    frameCamera;
 GLFrame    frametorus;
 GLFrame    world;
@@ -523,11 +779,13 @@ float yro=0;
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 float flip=0;
-float movex=0;
-float movey=0;
-float movez=0;
+float targetx=0;
+float targety=0;
+float targetz=0;
 
-bug test[2];
+bug test[BUG_NUM];
+//float obstaclex[BUG_NUM]={0};
+//float obstacley[BUG_NUM]={0};
 
 GLfloat  ambientLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 GLfloat  ambientLightg[] = { 0.0f, 0.9f, 0.0f, 1.0f };
@@ -567,7 +825,8 @@ void SetupRC()
     frametorus.SetOrigin(0.0f, 0.34f, -2.5);
     world.SetOrigin(0.0f, 0.34f, -2.5);
     shadow.SetOrigin(0.0f, 0.34f, -2.5);
-    frameCamera.SetOrigin(0,0.7,1.5);
+    frameCamera.SetOrigin(-2,17.7,-2);
+    frameCamera.RotateLocalX(3.14159/2);
     frametorus.RotateLocalX(-3.14159/2);
     world.RotateLocalX(-3.14159/2);
     shadow.RotateLocalX(-3.14159/2);
@@ -591,6 +850,23 @@ void SetupRC()
         angle[i][3]=50;
         angle[i][4]=0;
     }
+
+    for(int i=0; i<BUG_NUM; i++)
+    {
+        test[i].setlocation(rand()%20-10,rand()%20-10,0);
+        for(int j=0;j<i;j++) {
+            if(test[j].getx()==test[i].getx()) {
+                if(test[j].gety()==test[i].gety()){
+                    test[i].setlocation(rand()%20-10,rand()%20-10,0);
+                    j=-1;
+                }
+            }
+        }
+        test[i].setnumber(i);
+    }
+
+
+    
 
     glEnable(GL_DEPTH_TEST);	// Hidden surface removal
     glFrontFace(GL_CCW);		// Counter clock-wise polygons face out
@@ -638,6 +914,15 @@ void DrawGround(void)
     glEnd();
 }
 
+bool check(float x, float y)
+{
+    for(int i; i<BUG_NUM; i++)
+    {
+        if(pow(obstaclex[i]-x,2)+pow(obstacley[i]-y,2)<0.5)
+            return false;
+    }
+    return true;
+}
 
 // Called to draw scene
 void RenderScene(void)
@@ -682,7 +967,7 @@ void RenderScene(void)
     glDisable(GL_DEPTH_TEST);
     m3dMakePlanarShadowMatrix(shadowMat, vPlaneEquation, lightPos);
     glMultMatrixf((GLfloat *)shadowMat);
-    test[0].drawbug(1);
+    //test[0].drawbug(1);
     glEnable(GL_DEPTH_TEST);
     glPopMatrix();//1
 
@@ -699,20 +984,44 @@ void RenderScene(void)
 
     glPushMatrix();
     world.ApplyActorTransform();
-    glTranslatef(1,0,0);
-    test[0].drawbug(0);
-    test[0].action();
+    glTranslatef(targetx,targety,targetz);
+    glutSolidSphere(0.2,10,10);
     glPopMatrix();
-    glPushMatrix();
+
+    for(int i=0; i<BUG_NUM; i++)
+    {
+        glPushMatrix();
+        world.ApplyActorTransform();
+        //glTranslatef(1,0,0);
+        glColor3ub(128-i*10, i*10, 128);
+        test[i].drawbug(0);
+        test[i].action(targetx,targety);
+        obstaclex[i]=test[i].getx();
+        obstacley[i]=test[i].gety();
+        glPopMatrix();
+    }
+
+    /*glPushMatrix();
     world.ApplyActorTransform();
-    glTranslatef(-1,0,0);
-    glRotatef(180,0,0,1);
+    //glTranslatef(-1,0,0);
+    //glRotatef(180,0,0,1);
+    glColor3f(0.5,0.1,0.1);
     test[1].drawbug(0);
-    test[1].action();
+    test[1].action(targetx,targety);
+    obstaclex[1]=test[1].getx();
+    obstacley[1]=test[1].gety();
+    glPopMatrix();//2*/
+
+    /*glPushMatrix();
+    world.ApplyActorTransform();
+    glColor3f(0.5,0.7,0.1);
+    test[2].drawbug(0);
+    test[2].action(targetx,targety);
+    obstaclex[2]=test[2].getx();
+    obstacley[2]=test[2].gety();
+    glPopMatrix();*/
+
     glDisable(GL_LIGHTING);
-    glPopMatrix();//2
-
-
 
 
 
@@ -730,6 +1039,7 @@ void RenderScene(void)
     // Do the buffer Swap
     glutSwapBuffers();
 }
+
 void myKeys(unsigned char key, int x, int y)
 {
     switch(key)
@@ -847,19 +1157,24 @@ void myKeys(unsigned char key, int x, int y)
         break;
 
     case 'w':
-        xro+=0.1;
+
+        if(check(targetx,targety-0.2))
+            targety-=0.2;
         //frametorus.MoveRight(-0.1f);
         break;
     case 's':
-        xro-=0.1;
+        if(check(targetx,targety+0.2))
+            targety+=0.2;
         //frametorus.MoveRight(0.1f);
         break;
     case 'a':
-        yro+=0.1;
+        if(check(targetx+0.2,targety))
+            targetx+=0.2;
         //frametorus.MoveUp(-0.1f);
         break;
     case 'd':
-        yro-=0.1;
+        if(check(targetx-0.2,targety))
+            targetx-=0.2;
         //frametorus.MoveUp(0.1f);
         break;
     case '1':
