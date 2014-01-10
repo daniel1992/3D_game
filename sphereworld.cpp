@@ -1,9 +1,7 @@
-// SphereWorld.cpp
-// OpenGL SuperBible
-// Demonstrates an immersive 3D environment using actors
-// and a camera. This version adds lights and material properties
-// and shadows.
-// Program by Richard S. Wright Jr.
+/*
+1/10更新部分
+更改鍵盤觸發(可同時按多鍵)
+*/
 #include <stdlib.h>
 #include <time.h>
 #include <string>
@@ -15,11 +13,13 @@
 #include <math.h>
 #include "glm.h"
 #include <stdio.h>
-
-
 using namespace std;
-
-
+//============鍵盤================
+const unsigned int MAX_KEY_STATE = 256;
+const unsigned int MAX_SPECIAL_KEY_STATE = 256;
+bool keyState[MAX_KEY_STATE];
+bool specialKeyState[MAX_SPECIAL_KEY_STATE];
+//============鍵盤================
 #define NUM_MAP_OBJS    3
 #define NUM_BODYPARTS    10
 #define NUM_WEAPONS    1
@@ -913,8 +913,6 @@ GLMmodel *MODEL_bodyparts[NUM_BODYPARTS];
 //GLMmodel *MODEL_TREE[NUM_TREE];
 GLMmodel *MODEL_SCENE[NUM_MAP_OBJS];
 
-
-
 //GLFrame    spheres[NUM_SPHERES];
 GLFrame    frameCamera;
 GLFrame    Actorframe;
@@ -953,8 +951,6 @@ static GLfloat zTra = 0.0f;
 static GLfloat xRot = 0.0f;
 static GLfloat r = 0.0f;
 
-
-
 //bug
 float delta=0;
 float angle[6][5];
@@ -971,7 +967,6 @@ float flip=0;
 int bulletcount=0;
 int health=100;
 int timer=0;
-
 
 bug test[BUG_NUM];
 bullet bb[100];
@@ -1563,8 +1558,6 @@ void RenderScene(void)
     glutSwapBuffers();
 }
 
-
-
 // Respond to arrow keys by moving the camera frame of reference
 void SpecialKeys(int key, int x, int y)
 {
@@ -1694,23 +1687,155 @@ void ChangeSize(int w, int h)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
-
-
+//============鍵盤================(不會lag用)
+void init_KeyEvent( void ) { // 初始化這些按鍵
+	for( unsigned int i = 0 ; i < MAX_KEY_STATE; ++i )
+		keyState[i] = false;
+	for( unsigned int i = 0 ; i < MAX_SPECIAL_KEY_STATE; ++i )
+		specialKeyState[i] = false;
+}
+void setKeyStateUp( const unsigned char k ) { // 代表按下某鍵, true
+    keyState[k] = false;
+}
+void setSpecialKeyStateUp( const int k ) { // 代表按下某鍵(F1~F12,上下左右等), true
+    specialKeyState[k] = false;
+}
+void setKeyStateDown( const unsigned char k ) { // 代表放開某鍵, false
+    keyState[k] = true;
+}
+void setSpecialKeyStateDown( const int k ) { // 代表放開某鍵(F1~F12,上下左右等), true
+    specialKeyState[k] = true;
+}
+const bool isKeyStateDown( const unsigned char k ) { // 回傳是否有壓下某鍵
+    return keyState[k];
+}
+const bool isSpecialKeyStateDown( const int k ) { // 回傳是否有壓下某鍵(F1~F12,上下左右等)
+    return specialKeyState[k];
+}
+//============鍵盤所有按鍵是否按下==========(此方法順暢)
+void SpecialKeyUP( int key, int x, int y ) {
+    setSpecialKeyStateUp(key);
+}
+void SpecialKeyDOWN( int key, int x, int y ) {
+    setSpecialKeyStateDown(key);
+}
+void keyUP( unsigned char key, int x, int y ) {
+    setKeyStateUp(key);
+}
+void keyDOWN( unsigned char key, int x, int y ) {
+    setKeyStateDown(key);
+}
+//============update_game==========
+void update_game( int value )
+{
+	//=====處理一般key的部分
+	if ( isKeyStateDown(27) ) { // Esc
+		exit(0); // 結束遊戲
+	}
+        //===================
+	if ( isKeyStateDown('w') || isKeyStateDown('W') ) {
+        //Actorframe.MoveForward(0.025f);
+        //Actor_position_z+=0.2f;
+        r+=0.8f;
+        face=0;
+        if(check(targetx,targety-0.2))
+        {
+            frameCamera.MoveUp(0.2);
+            targety-=0.2;
+        }
+	}
+        //===================
+    if ( isKeyStateDown('s') || isKeyStateDown('S') ) {
+        //Actorframe.MoveForward(-0.025f);
+        //Actor_position_z-=0.2f;
+        r-=0.8f;
+        face=2;
+        if(check(targetx,targety+0.2))
+        {
+            frameCamera.MoveUp(-0.2);
+            targety+=0.2;
+        }
+	}
+        //===================
+    if ( isKeyStateDown('a') || isKeyStateDown('A') ) {
+        //Actorframe.RotateLocalY(0.1f);
+        //Actor_yRot+=2.0f;
+        r+=0.8f;
+        face=1;
+        if(check(targetx+0.2,targety))
+        {
+            frameCamera.MoveRight(0.2);
+            targetx+=0.2;
+        }
+	}
+        //===================
+    if ( isKeyStateDown('d') || isKeyStateDown('D') ) {
+        //Actorframe.RotateLocalY(-0.1f);
+        r+=0.8f;
+        face=3;
+        if(check(targetx-0.2,targety))
+        {
+            frameCamera.MoveRight(-0.2);
+            targetx-=0.2;
+        }
+        //Actor_yRot-=2.0f;
+	}
+        //===================
+    if ( isKeyStateDown(' ') ) {
+        if(timer>=0) {
+        bb[bulletcount].setb();
+        bulletcount++;
+        if(bulletcount>=100) {
+            bulletcount=0;
+        }
+        timer=-30;
+        }
+	}
+	//=====處理SpecialKey的部分
+    if( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
+        frameCamera.MoveForward(0.2f);
+    }
+        //===================
+    if( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
+        frameCamera.MoveForward(-0.2f);
+    }
+        //===================
+	if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
+	    frameCamera.RotateLocalY(0.2f);
+	}
+        //===================
+	if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
+	    frameCamera.RotateLocalY(-0.2f);
+	}
+	// 呼叫myDisplay重畫
+	glutPostRedisplay();
+    glutTimerFunc( 33, update_game, 0);
+}
+//============主程式============
 int main(int argc, char* argv[])
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STENCIL);
     glutInitWindowSize(800, 600);
-    glutCreateWindow("OpenGL SphereWorld Demo + Texture Maps");
+    glutCreateWindow("蟲蟲生存戰");
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
-    glutSpecialFunc(SpecialKeys);
-    glutKeyboardFunc(Keys);
+    //========================================
+    init_KeyEvent(); // 初始化所有鍵盤上的按鍵
+	glutKeyboardUpFunc( keyUP );
+    glutKeyboardFunc( keyDOWN ); // 壓著鍵盤
+	glutSpecialUpFunc( SpecialKeyUP );
+    glutSpecialFunc( SpecialKeyDOWN ); // 壓著鍵盤
+    //========================================
+    //glutKeyboardFunc(Keys);      // (會lag)
+    //glutSpecialFunc(SpecialKeys);// F1~F12,上下左右等(會lag)
 
     SetupRC();
     glutTimerFunc(33, TimerFunction, 1);
-
-    glutMainLoop();
+    //========================================
+    update_game(0); // 主要為鍵盤事件
+    //========================================
+    glutMainLoop(); // 訊息迴圈
 
     ShutdownRC();
 
