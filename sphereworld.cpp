@@ -1,11 +1,7 @@
 /*
-須完成部分 邊界測試
-20140113更新部分
-完成場景
-成功畫出手槍
-加入計分機制, 紀錄遊戲最高分(遊戲關閉會消失)
-死後可重新開始遊戲
-調整子彈飛行速度&傷害
+20140114更新部分
+人物邊界碰撞偵測(仍有些小bug)
+目前蟲還是可以行走或復活在人無法行走的地方
 */
 //==========
 #include <stdlib.h>
@@ -1826,38 +1822,45 @@ void keyDOWN( unsigned char key, int x, int y ) {
     setKeyStateDown(key);
 }
 //============update_game==========
-void check_bound(float x,float y){
-    if((0.6 / 6.2)*x - y + (-13.2645) < 0){ //AB
-        targetx = x;
-        targety = y;
-    }
-    if(6.5*x - y + 35.4 < 0){//BC
-        targetx = x;
-        targety = y;
-    }
-    if((1.8/17.4)*x - y + 7.2552 > 0){//CD
-        targetx = x;
-        targety = y;
-    }
-    if(-27*x - y + 359.6 > 0){//DE
-        targetx = x;
-        targety = y;
-    }
-    if((4/13)*x - y + (-0.8615) < 0){//EF
-        targetx = x;
-        targety = y;
-    }
-    if(7.875*x - y + (-2.375) < 0){//AF
-        targetx = x;
-        targety = y;
-    }
+int check_bound(float x,float y) //==true為在可活動範圍內
+{
+//===========有在可活動範為內會進到if內
+	if( (1.8/17.4)*x - y + 7.2552 > 0 )
+	{//======在CD兩點連線下方OK (X向右為正, Y向上為正)
+		if( 7.875*x - y + (-2.375) < 0 )
+		{//======在AF兩點連線左側OK (X向右為正, Y向上為正)
+			if( (0.6 / 6.2)*x - y + (-13.2645) < 0 )
+			{//======在AB兩點連線上方OK (X向右為正, Y向上為正)
+				if( 6.5*x - y + 35.4 > 0 )
+				{//======在BC兩點連線右側OK (X向右為正, Y向上為正)
+					return 1; // 玩家在"甲"區域內
+				}else{
+					return 0; // 玩家脫離可移動範圍!!!!!
+				}
+			}else{
+				return 0; // 玩家脫離可移動範圍!!!!!
+			}
+		}else{
+		//======在AF兩點連線右側&線上OK (X向右為正, Y向上為正)
+			if( (4/13)*x - y + (-0.8615) < 0 )
+			{//======在EF兩點連線上方OK (X向右為正, Y向上為正)
+				if( -27*x - y + 359.6 > 0 )
+				{//======在DE兩點連線左側OK (X向右為正, Y向上為正)
+					return 1; // 玩家在"乙"區域內
+				}else{
+					return 0; // 玩家脫離可移動範圍!!!!!
+				}
+			}else{
+				return 0; // 玩家脫離可移動範圍!!!!!
+			}
+		}
+    }else{
+		return 0; // 玩家脫離可移動範圍!!!!!
+	}
 }
 //=================================
 void update_game( int value )
 {
-	//邊件判定
-
-	check_bound(targetx,targety);
 	//=====處理一般key的部分
 	if ( isKeyStateDown(27) ) { // Esc
 		exit(0); // 結束遊戲
@@ -1866,60 +1869,84 @@ void update_game( int value )
 	if ( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
-		if ( gameover == 0 ) { //20140113
+		if ( gameover == 0 ) { //如果gameover則不能移動
 			r+=0.8f;
 			face=0;
-			if(check(targetx,targety-0.2))
+			if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
 			{
 				frameCamera.MoveUp(0.2);
 				targety-=0.2;
+				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+				{
+					frameCamera.MoveUp(-0.2);
+					targety+=0.2;
+				}
 			}
 		}
-		printf("x = %f y = %f\n",targetx,targety);
+		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
+		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
         //Actorframe.MoveForward(-0.025f);
         //Actor_position_z-=0.2f;
-		if ( gameover == 0 ) { //20140113
+		if ( gameover == 0 ) { //如果gameover則不能移動
 			r-=0.8f;
 			face=2;
-			if(check(targetx,targety+0.2))
+			if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
 			{
 				frameCamera.MoveUp(-0.2); //====畫面動
 				targety+=0.2; 			//====人動
+				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+				{
+					frameCamera.MoveUp(+0.2);
+					targety-=0.2;
+				}
 			}
 		}
-		printf("x = %f y = %f\n",targetx,targety);
+		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
+		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
         //Actorframe.RotateLocalY(0.1f);
         //Actor_yRot+=2.0f;
-		if ( gameover == 0 ) { //20140113
+		if ( gameover == 0 ) { //如果gameover則不能移動
 			r+=0.8f;
 			face=1;
-			if(check(targetx+0.2,targety))
+			if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
 			{
 				frameCamera.MoveRight(0.2);
 				targetx+=0.2;
+				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+				{
+					frameCamera.MoveRight(-0.2);
+					targetx-=0.2;
+				}
 			}
 		}
-		printf("x = %f y = %f\n",targetx,targety);
+		//printf("%f\n",check_bound(targetx,targety)); //邊件判定
+		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
         //Actorframe.RotateLocalY(-0.1f);
-		if ( gameover == 0 ) { //20140113
+		if ( gameover == 0 ) { //如果gameover則不能移動
 			r+=0.8f;
 			face=3;
-			if(check(targetx-0.2,targety))
+			if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
 			{
 				frameCamera.MoveRight(-0.2);
 				targetx-=0.2;
+				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+				{
+					frameCamera.MoveRight(0.2);
+					targetx+=0.2;
+				}
 			}
 		}
-		printf("x = %f y = %f\n",targetx,targety);
+		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
+		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
         //Actor_yRot-=2.0f;
 	}
         //===================
