@@ -953,14 +953,14 @@ GLuint  textureObjects[NUM_TEXTURES];
 GLuint  map_textureObjects[NUM_MAP_OBJS];
 GLuint  weapon_textureObjects[NUM_WEAPONS];
 char *weapon_texture[] = {"weapon/handgun.tga"};
-char *map_texture[] = {/*"old fashion town/Maps/wf1c.tga",*/"old fashion town/Maps/df2.tga","old fashion town/Maps/na1.tga","old fashion town/Maps/wf1c.tga","old fashion town/Maps/rf2b.tga","old fashion town/Maps/dr1.tga"};
+char *map_texture[] = {"old fashion town/Maps/df2.tga","old fashion town/Maps/na1.tga","old fashion town/Maps/wf1c.tga","old fashion town/Maps/rf2b.tga","old fashion town/Maps/dr1.tga"};
 const char *szTextureFiles[] = { "main_actor/body.tga","main_actor/face.tga"};
 char *bodyparts[] = {"main_actor/head.obj","main_actor/body.obj","main_actor/upper_left_arm.obj","main_actor/lower_left_arm.obj",
                      "main_actor/upper_right_arm.obj","main_actor/lower_right_arm.obj","main_actor/upper_left_foot.obj","main_actor/lower_left_foot.obj","main_actor/upper_right_foot.obj",
                      "main_actor/lower_right_foot.obj"
                     };
 
-char *map_scene[] = {/*"old fashion town/house.obj",*/"old fashion town/electric_pole.obj","old fashion town/ground.obj","old fashion town/wall.obj","old fashion town/roof.obj","old fashion town/door.obj"};
+char *map_scene[] = {"old fashion town/electric_pole.obj","old fashion town/ground.obj","old fashion town/wall.obj","old fashion town/roof.obj","old fashion town/door.obj"};
 
 char *weapons[] = {"weapon/handgun.obj"};
 //主角變數
@@ -1189,7 +1189,7 @@ void SetupRC()
     world.SetOrigin(0.0f, 0.34f, -2.5);
     frameCamera.SetOrigin(-1,12.7,-2.5);
     frameCamera.RotateLocalX(3.14159/2);
-    world.RotateLocalX(-3.14159/4);
+    world.RotateLocalX(-3.14159/2);
 
 //讀主角OBJ
     for(int j=0; j<NUM_BODYPARTS; j++)
@@ -1512,7 +1512,7 @@ void DrawInhabitants(GLint nShadow)
     glPushMatrix();
     glRotatef(90,1,0,0);
     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
-    DrawFrame();
+    //DrawFrame();
     glBindTexture(GL_TEXTURE_2D, map_textureObjects[2]);
     glScalef(19.0, 19.0, 19.0);
     //glTranslatef(0.0f,0.023f,0.0f);
@@ -1581,7 +1581,7 @@ void RenderScene(void)
     world.ApplyActorTransform();
     DrawInhabitants(0);
     healthdamage();
-    printf("%d\n",health);
+    //printf("%d\n",health);
     glPopMatrix();
 
     for(int i=0; i<BUG_NUM; i++)
@@ -1844,6 +1844,7 @@ void update_game( int value )
 				targety-=0.2;
 			}
 		}
+		printf("x = %f y = %f\n",targetx,targety);
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
@@ -1854,10 +1855,11 @@ void update_game( int value )
 			face=2;
 			if(check(targetx,targety+0.2))
 			{
-				frameCamera.MoveUp(-0.2);
-				targety+=0.2;
+				frameCamera.MoveUp(-0.2); //====畫面動
+				targety+=0.2; 			//====人動
 			}
 		}
+		printf("x = %f y = %f\n",targetx,targety);
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
@@ -1872,6 +1874,7 @@ void update_game( int value )
 				targetx+=0.2;
 			}
 		}
+		printf("x = %f y = %f\n",targetx,targety);
 	}
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
@@ -1885,6 +1888,7 @@ void update_game( int value )
 				targetx-=0.2;
 			}
 		}
+		printf("x = %f y = %f\n",targetx,targety);
         //Actor_yRot-=2.0f;
 	}
         //===================
