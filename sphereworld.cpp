@@ -1,7 +1,10 @@
 /*
-1/10更新部分
-更改鍵盤觸發(可同時按多鍵)
+20140113更新部分
+加入計分機制, 紀錄遊戲最高分(遊戲關閉會消失)
+死後可重新開始遊戲
+調整子彈飛行速度&傷害
 */
+//==========
 #include <stdlib.h>
 #include <time.h>
 #include <string>
@@ -14,26 +17,33 @@
 #include "glm.h"
 #include <stdio.h>
 using namespace std;
+//==========2D用
+#include <windows.h>
+#include <GL/glut.h>
+//============視窗==========
+int screenWidth = 800 , screenHeight = 700; // 視窗大小
+//============遊戲分數==========
+bool gameover = 0;        // 目前是否遊戲結束 20140113
+int highscore = 0;        // 目前最高分數 20140113
+int gamescore = 0;        // 目前遊戲分數
 //============鍵盤================
 const unsigned int MAX_KEY_STATE = 256;
 const unsigned int MAX_SPECIAL_KEY_STATE = 256;
 bool keyState[MAX_KEY_STATE];
 bool specialKeyState[MAX_SPECIAL_KEY_STATE];
 //============鍵盤================
-#define NUM_MAP_OBJS    3
+#define NUM_MAP_OBJS    3  // 有幾種場景物體
 #define NUM_BODYPARTS    10
 #define NUM_WEAPONS    1
 #define BUG_NUM      10
-
-GLuint btextureObjects[1];
+//===========子彈用
 GLMmodel *BULL;
-const char *skin={"orb.tga"};
-
+//===========
 float obstaclex[BUG_NUM]= {0};
 float obstacley[BUG_NUM]= {0};
 int casualty=-1;
 int hurt=0;
-int bdamage=10;
+int bdamage=10;  //子彈傷害係數
 float targetx=0;
 float targety=0;
 float targetz=1.75;
@@ -58,32 +68,15 @@ public:
 bullet::bullet()
 {
     drawbullet=0;
-    damage=50;
+    damage=20;
     bx=targetx+cos(3.1415926/2*(vec-1));
     by=targety+sin(3.1415923/2*(vec-1));
     bz=-0.25;
-
-      /*  GLbyte *pBytes;
-        GLint iWidth, iHeight, iComponents;
-        GLenum eFormat;
-
-        glBindTexture(GL_TEXTURE_2D, btextureObjects[0]);
-
-        // Load this texture map
-        pBytes = gltLoadTGA(skin, &iWidth, &iHeight, &iComponents, &eFormat);
-        gluBuild2DMipmaps(GL_TEXTURE_2D, iComponents, iWidth, iHeight, eFormat, GL_UNSIGNED_BYTE, pBytes);
-        free(pBytes);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);*/
-
-    BULL=glmReadOBJ("bullet.obj");
+	//=========讀子彈obj
+    BULL=glmReadOBJ("weapon/bullet.obj");
     glmUnitize(BULL);
     glmFacetNormals(BULL);
     glmVertexNormals(BULL,60);
-
 }
 bullet::~bullet() {}
 void bullet::draw()
@@ -95,7 +88,6 @@ void bullet::draw()
     glRotatef(90,0,1,0);
     glRotatef(-90*(vec-1),1,0,0);
     glmDraw(BULL, GLM_SMOOTH|GLM_TEXTURE);
-
 }
 
 void bullet::action()
@@ -104,8 +96,8 @@ void bullet::action()
     {
         draw();
     }
-    bx+=0.03*cos(3.1415926/2*(vec-1));
-    by+=0.03*sin(3.1415923/2*(vec-1));
+	bx+=0.3*cos(3.1415926/2*(vec-1));
+	by+=0.3*sin(3.1415923/2*(vec-1));
     if(pow(bx-targetx,2)+pow(by-targety,2)>100)
     {
         drawbullet=0;
@@ -799,7 +791,7 @@ void bug::moving(double targetx, double targety)
                         otherturn+=360;
                     }
                     //if(i==6||i==0) {
-                    printf("%d,%lf,%lf,%lf,%lf\n",number,obstaclex[i],obstacley[i],movex,movey);
+                    //printf("%d,%lf,%lf,%lf,%lf\n",number,obstaclex[i],obstacley[i],movex,movey);
                     //}
 
                     if((otherturn-turn>100&&otherturn-turn<260)||(otherturn-turn<-100&&otherturn-turn>-260))
@@ -897,11 +889,11 @@ void bug::moving(double targetx, double targety)
     }
 }
 void bug::healthdamage(int d) {
-
-    health-=d;
+	health-=d;
     sattacked=1;
-    if(health<=0) {
+    if(health==0) { //20140113
         sdie=1;
+		gamescore += 1000; // 成功殺死一隻蟲
     }
 }
 
@@ -930,14 +922,14 @@ M3DMatrix44f mShadowMatrix;
 #define HOUSE_TEXTURE  1
 #define ACTOR_TEXTURE  0
 #define FACE_TEXTURE  1
-#define NUM_TEXTURES    2
-#define NUM_BODYPARTS 10
+#define NUM_TEXTURES    2  //======人的tga數
+#define NUM_BODYPARTS 10   //======人的obj數
 GLuint  textureObjects[NUM_TEXTURES];
 GLuint  map_textureObjects[NUM_MAP_OBJS];
 GLuint  weapon_textureObjects[NUM_WEAPONS];
-char *weapon_texture[] = {"handgun.tga"};
-char *map_texture[] = {"old fashion town/Maps/wf1c.tga","old fashion town/Maps/dvc1.tga","old fashion town/Maps/na1.tga"};
-const char *szTextureFiles[] = { "VDV/vdv_Color.tga","VDV/face.tga"};
+char *weapon_texture[] = {"weapon/handgun.tga"};
+char *map_texture[] = {"old fashion town/Maps/wf1c.tga","old fashion town/Maps/df2.tga","old fashion town/Maps/na1.tga"};
+const char *szTextureFiles[] = { "main_actor/body.tga","main_actor/face.tga"};
 char *bodyparts[] = {"main_actor/head.obj","main_actor/body.obj","main_actor/upper_left_arm.obj","main_actor/lower_left_arm.obj",
                      "main_actor/upper_right_arm.obj","main_actor/lower_right_arm.obj","main_actor/upper_left_foot.obj","main_actor/lower_left_foot.obj","main_actor/upper_right_foot.obj",
                      "main_actor/lower_right_foot.obj"
@@ -945,12 +937,12 @@ char *bodyparts[] = {"main_actor/head.obj","main_actor/body.obj","main_actor/upp
 
 char *map_scene[] = {"old fashion town/house.obj","old fashion town/electric_pole.obj","old fashion town/ground.obj"};
 
-char *weapons[] = {"handgun.obj"};
+char *weapons[] = {"weapon/handgun.obj"};
 //主角變數
 static GLfloat zTra = 0.0f;
 static GLfloat xRot = 0.0f;
 static GLfloat r = 0.0f;
-
+int health = 100;  //==========人的血量
 //bug
 float delta=0;
 float angle[6][5];
@@ -965,7 +957,6 @@ float yro=0;
 //static GLfloat yRot = 0.0f;
 float flip=0;
 int bulletcount=0;
-int health=100;
 int timer=0;
 
 bug test[BUG_NUM];
@@ -1188,7 +1179,7 @@ void SetupRC()
     glEnable(GL_NORMALIZE);
 
     // Grayish background
-    glClearColor(fLowLight[0], fLowLight[1], fLowLight[2], fLowLight[3]);
+    glClearColor(fNoLight[0], fNoLight[1], fNoLight[2], fNoLight[3]);
 
     // Clear stencil buffer with zero, increment by one whenever anybody
     // draws into it. When stencil function is enabled, only write where
@@ -1371,7 +1362,11 @@ void DrawGround(void)
 }
 void healthdamage()
 {
+	if ( health > 0 ) { //20140113
     health-=hurt*bdamage;
+	}else{
+		gameover = 1; // 人的血量歸零,遊戲結束
+	}
     hurt=0;
 }
 
@@ -1456,7 +1451,7 @@ void DrawInhabitants(GLint nShadow)
     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
     glBindTexture(GL_TEXTURE_2D, map_textureObjects[1]);
     glScalef(25.0, 25.0, 25.0);
-    //glmDraw(MODEL_SCENE[1], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glmDraw(MODEL_SCENE[1], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
     glPopMatrix();
 
     glPushMatrix();
@@ -1541,15 +1536,42 @@ void RenderScene(void)
     }
 
     glPushMatrix();
-    char mss[30];
-    sprintf(mss, "health %d \n hit %d", health,test[0].health);
-
-    glColor3f(1.0, 0.0, 0.0);  //set font color
-    glWindowPos2i(10, 600-50);    //set font start position
-    for(int i=0; i<strlen(mss); i++)
-    {
-        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, mss[i]);
-    }
+		char Health[30], Score[100], HighScore[100], GameOver[] = "Game Over!!!! Press R to try again, Esc to quit...";
+		//===========血量部分
+			if ( health < 0 ) { health = 0; } // 避免有負數血量的事情發生 20140113
+			sprintf(Health, "Health  %d", health);
+			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+			glWindowPos2i(20, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
+			for( int i=0 ; i < strlen( Health ) ; i++ )
+			{
+				//glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, Health[i]);
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Health[i]);
+			}
+		//===========分數部分
+			sprintf(Score, "Score  %d", gamescore );
+			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+			glWindowPos2i(20, screenHeight-100);    // 字形左下角位置 原點為視窗左下角
+			for( int i=0 ; i < strlen( Score ) ; i++ )
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Score[i]);
+			}
+		//===========高分紀錄部分 20140113
+			sprintf(HighScore, "High Score  %d", highscore );
+			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+			glWindowPos2i( screenWidth/2, screenHeight-25);    // 字形左下角位置 原點為視窗左下角
+			for( int i=0 ; i < strlen( HighScore ) ; i++ )
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, HighScore[i]);
+			}
+		//===========遊戲結束 20140113
+		if ( gameover == 1 ) {
+			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+			glWindowPos2i( screenWidth/2 - 100, screenHeight/2 );    // 字形左下角位置 原點為視窗左下角
+			for( int i=0 ; i < strlen( GameOver ) ; i++ )
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, GameOver[i]);
+			}
+		}
     glPopMatrix();
 
     glPopMatrix();
@@ -1559,7 +1581,7 @@ void RenderScene(void)
 }
 
 // Respond to arrow keys by moving the camera frame of reference
-void SpecialKeys(int key, int x, int y)
+void SpecialKeys(int key, int x, int y) // 會lag 目前不要用
 {
     if(key == GLUT_KEY_UP)
         frameCamera.MoveForward(0.2f);
@@ -1578,7 +1600,7 @@ void SpecialKeys(int key, int x, int y)
 }
 
 
-void Keys(unsigned char key, int x, int y)
+void Keys(unsigned char key, int x, int y) // 會lag 目前不要用
 {
     switch(key)
     {
@@ -1667,7 +1689,10 @@ void TimerFunction(int value)
 void ChangeSize(int w, int h)
 {
     GLfloat fAspect;
-
+	/* Save the new width and height */
+	screenWidth  = w;
+	screenHeight = h;
+	//============================
     // Prevent a divide by zero, when window is too short
     // (you cant make a window of zero width).
     if(h == 0)
@@ -1733,80 +1758,97 @@ void update_game( int value )
 		exit(0); // 結束遊戲
 	}
         //===================
-	if ( isKeyStateDown('w') || isKeyStateDown('W') ) {
+	if ( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
-        r+=0.8f;
-        face=0;
-        if(check(targetx,targety-0.2))
-        {
-            frameCamera.MoveUp(0.2);
-            targety-=0.2;
-        }
+		if ( gameover == 0 ) { //20140113
+			r+=0.8f;
+			face=0;
+			if(check(targetx,targety-0.2))
+			{
+				frameCamera.MoveUp(0.2);
+				targety-=0.2;
+			}
+		}
 	}
         //===================
-    if ( isKeyStateDown('s') || isKeyStateDown('S') ) {
+    if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
         //Actorframe.MoveForward(-0.025f);
         //Actor_position_z-=0.2f;
-        r-=0.8f;
-        face=2;
-        if(check(targetx,targety+0.2))
-        {
-            frameCamera.MoveUp(-0.2);
-            targety+=0.2;
-        }
+		if ( gameover == 0 ) { //20140113
+			r-=0.8f;
+			face=2;
+			if(check(targetx,targety+0.2))
+			{
+				frameCamera.MoveUp(-0.2);
+				targety+=0.2;
+			}
+		}
 	}
         //===================
-    if ( isKeyStateDown('a') || isKeyStateDown('A') ) {
+    if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
         //Actorframe.RotateLocalY(0.1f);
         //Actor_yRot+=2.0f;
-        r+=0.8f;
-        face=1;
-        if(check(targetx+0.2,targety))
-        {
-            frameCamera.MoveRight(0.2);
-            targetx+=0.2;
-        }
+		if ( gameover == 0 ) { //20140113
+			r+=0.8f;
+			face=1;
+			if(check(targetx+0.2,targety))
+			{
+				frameCamera.MoveRight(0.2);
+				targetx+=0.2;
+			}
+		}
 	}
         //===================
-    if ( isKeyStateDown('d') || isKeyStateDown('D') ) {
+    if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
         //Actorframe.RotateLocalY(-0.1f);
-        r+=0.8f;
-        face=3;
-        if(check(targetx-0.2,targety))
-        {
-            frameCamera.MoveRight(-0.2);
-            targetx-=0.2;
-        }
+		if ( gameover == 0 ) { //20140113
+			r+=0.8f;
+			face=3;
+			if(check(targetx-0.2,targety))
+			{
+				frameCamera.MoveRight(-0.2);
+				targetx-=0.2;
+			}
+		}
         //Actor_yRot-=2.0f;
 	}
         //===================
     if ( isKeyStateDown(' ') ) {
-        if(timer>=0) {
-        bb[bulletcount].setb();
-        bulletcount++;
-        if(bulletcount>=100) {
-            bulletcount=0;
-        }
-        timer=-30;
-        }
+		if ( gameover == 0 ) { //20140113
+			if(timer>=0) {
+				bb[bulletcount].setb();
+				bulletcount++;
+			if(bulletcount>=100) {
+				bulletcount=0;
+			}
+			timer=-30;
+			}
+		}
 	}
 	//=====處理SpecialKey的部分
-    if( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
-        frameCamera.MoveForward(0.2f);
+    if( isKeyStateDown('x') || isKeyStateDown('X') ) {
+		if ( gameover == 0 ) { //20140113
+			frameCamera.MoveForward(0.2f);
+		}
     }
         //===================
-    if( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
-        frameCamera.MoveForward(-0.2f);
+    if( isKeyStateDown('z') || isKeyStateDown('Z') ) {
+		if ( gameover == 0 ) { //20140113
+			frameCamera.MoveForward(-0.2f);
+		}
     }
         //===================
-	if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
-	    frameCamera.RotateLocalY(0.2f);
-	}
-        //===================
-	if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
-	    frameCamera.RotateLocalY(-0.2f);
-	}
+	if( isKeyStateDown('r') || isKeyStateDown('R') ) { // 重新開始遊戲 20140113
+		if ( gameover == 1 ) { //20140113
+			if ( gamescore >= highscore ) { // 刷新最高分數
+				highscore = gamescore; 
+			}
+			gameover = 0;  //======重新開始遊戲!!!
+			gamescore = 0; //======重新開始計分!!!
+			health = 100;  //======血量重新補滿!!!
+		}
+    }
 	// 呼叫myDisplay重畫
 	glutPostRedisplay();
     glutTimerFunc( 33, update_game, 0);
@@ -1816,7 +1858,7 @@ int main(int argc, char* argv[])
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STENCIL);
-    glutInitWindowSize(800, 600);
+    glutInitWindowSize(screenWidth, screenHeight);
     glutCreateWindow("蟲蟲生存戰");
     glutReshapeFunc(ChangeSize);
     glutDisplayFunc(RenderScene);
