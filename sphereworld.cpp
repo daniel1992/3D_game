@@ -1,5 +1,6 @@
 /*
 20140113更新部分
+成功畫出手槍
 加入計分機制, 紀錄遊戲最高分(遊戲關閉會消失)
 死後可重新開始遊戲
 調整子彈飛行速度&傷害
@@ -20,6 +21,29 @@ using namespace std;
 //==========2D用
 #include <windows.h>
 #include <GL/glut.h>
+void DrawFrame()
+{
+	// 紅 X
+	glBegin(GL_LINES);
+	glColor3ub(255,0,0);
+	glVertex3f(0,0,0);
+	glVertex3f(1,0,0);
+	glEnd();
+	// 黃 Y
+	glBegin(GL_LINES);
+	glColor3ub(255,255,0);
+	glVertex3f(0,0,0);
+	glVertex3f(0,1,0);
+	glEnd();
+	// 綠 Z
+	glBegin(GL_LINES);
+	glColor3ub(0,255,0);
+	glVertex3f(0,0,0);
+	glVertex3f(0,0,1);
+	glEnd();
+
+	glColor3ub(255,255,255);
+}
 //============視窗==========
 int screenWidth = 800 , screenHeight = 700; // 視窗大小
 //============遊戲分數==========
@@ -987,17 +1011,31 @@ void Actor::drawActor(/*int gun_id*/)
 
 //glScalef(1.6, 1.2, 1.2);
 //頭
+
+
     glTranslatef(targetx,targety,targetz);
     glTranslatef(0.0f, 0.2f, 0.0f);
     glRotatef(90,1,0,0);
+
     glRotatef(90*face,0,1,0);
     glScalef(1.5,1.5,1.5);
+
+
+ /////20140113 手槍
+
     glPushMatrix();
+
+
 
     glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
     glScalef(1.0, 1.0, 1.0);
     glTranslatef(0.0f,-1.32f,0.0f);
+
+
     glmDraw(MODEL_bodyparts[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    //DrawFrame();
+    Weapon handgun;
+    handgun.drawWeapon();
     glPopMatrix();
 
 //}
@@ -1018,11 +1056,13 @@ void Actor::drawActor(/*int gun_id*/)
     glmDraw(MODEL_bodyparts[2], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
 
     glPushMatrix();
+
     glBindTexture(GL_TEXTURE_2D, textureObjects[ACTOR_TEXTURE]);
     //glScalef(0.6, 0.6, 0.6);
     glRotatef(70.0f,1.0f,-1.0f,1.0f);
     glTranslatef(0.24f,-0.1f,0.0f);
-    glmDraw(MODEL_bodyparts[3], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    //glmDraw(MODEL_bodyparts[3], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+
     glPopMatrix();
 
     glPopMatrix();
@@ -1043,6 +1083,8 @@ void Actor::drawActor(/*int gun_id*/)
     //glTranslatef(-0.46f,-2.35f,0.0f);
     glmDraw(MODEL_bodyparts[5], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
     glPopMatrix();
+
+
 
     glPopMatrix();
 //左腳
@@ -1114,7 +1156,10 @@ Weapon::Weapon(int id,const char *name)
 void Weapon::drawWeapon(/*int gun_id*/)
 {
     glBindTexture(GL_TEXTURE_2D, weapon_textureObjects[0]);
-
+    glScalef(0.1f,0.1f,0.1f);
+    glRotatef(270.0f,1.0f,0.0f,0.0f);
+    glRotatef(90.0f,0.0f,1.0f,0.0f);
+    glTranslatef(0.0f,-3.0f,0.0f);
     glmDraw(MODEL_weapons[0], GLM_SMOOTH | GLM_TEXTURE);
 
 }
@@ -1842,7 +1887,7 @@ void update_game( int value )
 	if( isKeyStateDown('r') || isKeyStateDown('R') ) { // 重新開始遊戲 20140113
 		if ( gameover == 1 ) { //20140113
 			if ( gamescore >= highscore ) { // 刷新最高分數
-				highscore = gamescore; 
+				highscore = gamescore;
 			}
 			gameover = 0;  //======重新開始遊戲!!!
 			gamescore = 0; //======重新開始計分!!!
