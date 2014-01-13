@@ -1,4 +1,5 @@
 /*
+須完成部分 邊界測試
 20140113更新部分
 完成場景
 成功畫出手槍
@@ -1825,8 +1826,38 @@ void keyDOWN( unsigned char key, int x, int y ) {
     setKeyStateDown(key);
 }
 //============update_game==========
+void check_bound(float x,float y){
+    if((0.6 / 6.2)*x - y + (-13.2645) < 0){ //AB
+        targetx = x;
+        targety = y;
+    }
+    if(6.5*x - y + 35.4 < 0){//BC
+        targetx = x;
+        targety = y;
+    }
+    if((1.8/17.4)*x - y + 7.2552 > 0){//CD
+        targetx = x;
+        targety = y;
+    }
+    if(-27*x - y + 359.6 > 0){//DE
+        targetx = x;
+        targety = y;
+    }
+    if((4/13)*x - y + (-0.8615) < 0){//EF
+        targetx = x;
+        targety = y;
+    }
+    if(7.875*x - y + (-2.375) < 0){//AF
+        targetx = x;
+        targety = y;
+    }
+}
+//=================================
 void update_game( int value )
 {
+	//邊件判定
+
+	check_bound(targetx,targety);
 	//=====處理一般key的部分
 	if ( isKeyStateDown(27) ) { // Esc
 		exit(0); // 結束遊戲
