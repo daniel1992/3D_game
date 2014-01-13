@@ -1061,7 +1061,7 @@ void Actor::drawActor(/*int gun_id*/)
     //glScalef(0.6, 0.6, 0.6);
     glRotatef(70.0f,1.0f,-1.0f,1.0f);
     glTranslatef(0.24f,-0.1f,0.0f);
-    //glmDraw(MODEL_bodyparts[3], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glmDraw(MODEL_bodyparts[3], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
 
     glPopMatrix();
 
