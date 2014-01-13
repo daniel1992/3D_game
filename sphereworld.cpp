@@ -1,5 +1,6 @@
 /*
 20140113更新部分
+完成場景
 成功畫出手槍
 加入計分機制, 紀錄遊戲最高分(遊戲關閉會消失)
 死後可重新開始遊戲
@@ -56,7 +57,7 @@ const unsigned int MAX_SPECIAL_KEY_STATE = 256;
 bool keyState[MAX_KEY_STATE];
 bool specialKeyState[MAX_SPECIAL_KEY_STATE];
 //============鍵盤================
-#define NUM_MAP_OBJS    3  // 有幾種場景物體
+#define NUM_MAP_OBJS    5  // 有幾種場景物體
 #define NUM_BODYPARTS    10
 #define NUM_WEAPONS    1
 #define BUG_NUM      10
@@ -952,14 +953,14 @@ GLuint  textureObjects[NUM_TEXTURES];
 GLuint  map_textureObjects[NUM_MAP_OBJS];
 GLuint  weapon_textureObjects[NUM_WEAPONS];
 char *weapon_texture[] = {"weapon/handgun.tga"};
-char *map_texture[] = {"old fashion town/Maps/wf1c.tga","old fashion town/Maps/df2.tga","old fashion town/Maps/na1.tga"};
+char *map_texture[] = {/*"old fashion town/Maps/wf1c.tga",*/"old fashion town/Maps/df2.tga","old fashion town/Maps/na1.tga","old fashion town/Maps/wf1c.tga","old fashion town/Maps/rf2b.tga","old fashion town/Maps/dr1.tga"};
 const char *szTextureFiles[] = { "main_actor/body.tga","main_actor/face.tga"};
 char *bodyparts[] = {"main_actor/head.obj","main_actor/body.obj","main_actor/upper_left_arm.obj","main_actor/lower_left_arm.obj",
                      "main_actor/upper_right_arm.obj","main_actor/lower_right_arm.obj","main_actor/upper_left_foot.obj","main_actor/lower_left_foot.obj","main_actor/upper_right_foot.obj",
                      "main_actor/lower_right_foot.obj"
                     };
 
-char *map_scene[] = {"old fashion town/house.obj","old fashion town/electric_pole.obj","old fashion town/ground.obj"};
+char *map_scene[] = {/*"old fashion town/house.obj",*/"old fashion town/electric_pole.obj","old fashion town/ground.obj","old fashion town/wall.obj","old fashion town/roof.obj","old fashion town/door.obj"};
 
 char *weapons[] = {"weapon/handgun.obj"};
 //主角變數
@@ -1188,7 +1189,7 @@ void SetupRC()
     world.SetOrigin(0.0f, 0.34f, -2.5);
     frameCamera.SetOrigin(-1,12.7,-2.5);
     frameCamera.RotateLocalX(3.14159/2);
-    world.RotateLocalX(-3.14159/2);
+    world.RotateLocalX(-3.14159/4);
 
 //讀主角OBJ
     for(int j=0; j<NUM_BODYPARTS; j++)
@@ -1482,12 +1483,20 @@ void DrawInhabitants(GLint nShadow)
 
 //    for(i = 0; i < NUM_MAP_OBJS; i++)
     //  {
-    glPushMatrix();
+   /* glPushMatrix();
     glRotatef(90,1,0,0);
     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
     glBindTexture(GL_TEXTURE_2D, map_textureObjects[0]);
     glScalef(21.0, 21.0, 21.0);
     glTranslatef(0.0f,0.023f,0.0f);
+    glmDraw(MODEL_SCENE[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glPopMatrix();*/
+
+    glPushMatrix();
+    glRotatef(90,1,0,0);
+    //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
+    glBindTexture(GL_TEXTURE_2D, map_textureObjects[0]);
+    glScalef(25.0, 25.0, 25.0);
     glmDraw(MODEL_SCENE[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
     glPopMatrix();
 
@@ -1495,18 +1504,38 @@ void DrawInhabitants(GLint nShadow)
     glRotatef(90,1,0,0);
     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
     glBindTexture(GL_TEXTURE_2D, map_textureObjects[1]);
-    glScalef(25.0, 25.0, 25.0);
+    glScalef(15.0, 15.0, 15.0);
     glmDraw(MODEL_SCENE[1], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glPopMatrix();
+
+
+    glPushMatrix();
+    glRotatef(90,1,0,0);
+    //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
+    DrawFrame();
+    glBindTexture(GL_TEXTURE_2D, map_textureObjects[2]);
+    glScalef(19.0, 19.0, 19.0);
+    //glTranslatef(0.0f,0.023f,0.0f);
+    glmDraw(MODEL_SCENE[2], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
     glPopMatrix();
 
     glPushMatrix();
     glRotatef(90,1,0,0);
     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
-    glBindTexture(GL_TEXTURE_2D, map_textureObjects[2]);
-    glScalef(15.0, 15.0, 15.0);
-    glmDraw(MODEL_SCENE[2], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glBindTexture(GL_TEXTURE_2D, map_textureObjects[3]);
+    glScalef(25.0, 25.0, 25.0);
+    glTranslatef(0.0f,0.02f,0.0f);
+    glmDraw(MODEL_SCENE[3], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
     glPopMatrix();
 
+    glPushMatrix();
+    glRotatef(90,1,0,0);
+    //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
+    glBindTexture(GL_TEXTURE_2D, map_textureObjects[4]);
+    glScalef(13.0, 13.0, 13.0);
+    glTranslatef(0.0f,0.0f,-0.05f);
+    glmDraw(MODEL_SCENE[4], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glPopMatrix();
 //   }
 
     //glMaterialfv(GL_FRONT, GL_SPECULAR, fNoLight);
