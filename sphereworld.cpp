@@ -1,7 +1,6 @@
 /*
 20140114更新部分
-人物邊界碰撞偵測(仍有些小bug)
-目前蟲還是可以行走或復活在人無法行走的地方
+蟲的速度, 子彈傷害, 視角切換(v鍵), 光源調整
 */
 //==========
 #include <stdlib.h>
@@ -9,7 +8,7 @@
 #include <string>
 #include "weapon.h"
 #include "actor.h"
-#include "shared/gltools.h"	// OpenGL toolkit
+#include "shared/gltools.h"        // OpenGL toolkit
 #include "shared/math3d.h"    // 3D Math Library
 #include "shared/glframe.h"   // Frame class
 #include <math.h>
@@ -21,27 +20,29 @@ using namespace std;
 #include <GL/glut.h>
 void DrawFrame()
 {
-	// 紅 X
-	glBegin(GL_LINES);
-	glColor3ub(255,0,0);
-	glVertex3f(0,0,0);
-	glVertex3f(1,0,0);
-	glEnd();
-	// 黃 Y
-	glBegin(GL_LINES);
-	glColor3ub(255,255,0);
-	glVertex3f(0,0,0);
-	glVertex3f(0,1,0);
-	glEnd();
-	// 綠 Z
-	glBegin(GL_LINES);
-	glColor3ub(0,255,0);
-	glVertex3f(0,0,0);
-	glVertex3f(0,0,1);
-	glEnd();
+        // 紅 X
+        glBegin(GL_LINES);
+        glColor3ub(255,0,0);
+        glVertex3f(0,0,0);
+        glVertex3f(1,0,0);
+        glEnd();
+        // 黃 Y
+        glBegin(GL_LINES);
+        glColor3ub(255,255,0);
+        glVertex3f(0,0,0);
+        glVertex3f(0,1,0);
+        glEnd();
+        // 綠 Z
+        glBegin(GL_LINES);
+        glColor3ub(0,255,0);
+        glVertex3f(0,0,0);
+        glVertex3f(0,0,1);
+        glEnd();
 
-	glColor3ub(255,255,255);
+        glColor3ub(255,255,255);
 }
+//============視角切換==========
+int view = 4; //4為45度視角, 2為90度視角
 //============視窗==========
 int screenWidth = 800 , screenHeight = 700; // 視窗大小
 //============遊戲分數==========
@@ -65,7 +66,7 @@ float obstaclex[BUG_NUM]= {0};
 float obstacley[BUG_NUM]= {0};
 int casualty=-1;
 int hurt=0;
-int bdamage=10;  //子彈傷害係數
+int bdamage=10;  //蟲傷害係數
 float targetx=0;
 float targety=0;
 float targetz=1.75;
@@ -90,11 +91,11 @@ public:
 bullet::bullet()
 {
     drawbullet=0;
-    damage=20;
+    damage=25; //====子彈傷害係數
     bx=targetx+cos(3.1415926/2*(vec-1));
     by=targety+sin(3.1415923/2*(vec-1));
     bz=-0.25;
-	//=========讀子彈obj
+        //=========讀子彈obj
     BULL=glmReadOBJ("weapon/bullet.obj");
     glmUnitize(BULL);
     glmFacetNormals(BULL);
@@ -118,8 +119,8 @@ void bullet::action()
     {
         draw();
     }
-	bx+=0.3*cos(3.1415926/2*(vec-1));
-	by+=0.3*sin(3.1415923/2*(vec-1));
+        bx+=0.3*cos(3.1415926/2*(vec-1));
+        by+=0.3*sin(3.1415923/2*(vec-1));
     if(pow(bx-targetx,2)+pow(by-targety,2)>100)
     {
         drawbullet=0;
@@ -207,7 +208,7 @@ bug::bug()
     antenna=-30;
     sattack=0;
     health=100;
-    speed=0.005;
+    speed=0.02; //====蟲的移動速度
     damaged=10;
     for(int i=0; i<6; i++)
     {
@@ -911,11 +912,11 @@ void bug::moving(double targetx, double targety)
     }
 }
 void bug::healthdamage(int d) {
-	health-=d;
+        health-=d;
     sattacked=1;
     if(health==0) { //20140113
         sdie=1;
-		gamescore += 1000; // 成功殺死一隻蟲
+                gamescore += 1000; // 成功殺死一隻蟲
     }
 }
 
@@ -933,7 +934,7 @@ GLFrame    Actorframe;
 GLFrame    world;
 
 // Light and material Data
-GLfloat fLightPos[4]   = { -100.0f, 100.0f, 50.0f, 1.0f };  // Point source
+GLfloat fLightPos[4]   = { -4.0f, -2.0f, 2.0f, 1.0f };  // Point source
 GLfloat fNoLight[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 GLfloat fLowLight[] = { 0.25f, 0.25f, 0.25f, 1.0f };
 GLfloat fBrightLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -1186,7 +1187,7 @@ void SetupRC()
     world.SetOrigin(0.0f, 0.34f, -2.5);
     frameCamera.SetOrigin(-1,12.7,-2.5);
     frameCamera.RotateLocalX(3.14159/2);
-    world.RotateLocalX(-3.14159/2);
+    world.RotateLocalX(-3.14159/view);
 
 //讀主角OBJ
     for(int j=0; j<NUM_BODYPARTS; j++)
@@ -1405,11 +1406,11 @@ void DrawGround(void)
 }
 void healthdamage()
 {
-	if ( health > 0 ) { //20140113
+        if ( health > 0 ) { //20140113
     health-=hurt*bdamage;
-	}else{
-		gameover = 1; // 人的血量歸零,遊戲結束
-	}
+        }else{
+                gameover = 1; // 人的血量歸零,遊戲結束
+        }
     hurt=0;
 }
 
@@ -1550,7 +1551,12 @@ void RenderScene(void)
     frameCamera.ApplyCameraTransform();
 
     // Position light before any other transformations
+    glPushMatrix();
+    world.ApplyActorTransform();
     glLightfv(GL_LIGHT0, GL_POSITION, fLightPos);
+    glTranslatef(fLightPos[0],fLightPos[1],fLightPos[2]);
+    //glutSolidSphere(1.0,10,10);
+    glPopMatrix();
 
     // Draw the ground
     //glColor3f(1.0f, 1.0f, 1.0f);
@@ -1607,42 +1613,42 @@ void RenderScene(void)
     }
 
     glPushMatrix();
-		char Health[30], Score[100], HighScore[100], GameOver[] = "Game Over!!!! Press R to try again, Esc to quit...";
-		//===========血量部分
-			if ( health < 0 ) { health = 0; } // 避免有負數血量的事情發生 20140113
-			sprintf(Health, "Health  %d", health);
-			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-			glWindowPos2i(20, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
-			for( int i=0 ; i < strlen( Health ) ; i++ )
-			{
-				//glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, Health[i]);
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Health[i]);
-			}
-		//===========分數部分
-			sprintf(Score, "Score  %d", gamescore );
-			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-			glWindowPos2i(20, screenHeight-100);    // 字形左下角位置 原點為視窗左下角
-			for( int i=0 ; i < strlen( Score ) ; i++ )
-			{
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Score[i]);
-			}
-		//===========高分紀錄部分 20140113
-			sprintf(HighScore, "High Score  %d", highscore );
-			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-			glWindowPos2i( screenWidth/2, screenHeight-25);    // 字形左下角位置 原點為視窗左下角
-			for( int i=0 ; i < strlen( HighScore ) ; i++ )
-			{
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, HighScore[i]);
-			}
-		//===========遊戲結束 20140113
-		if ( gameover == 1 ) {
-			glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-			glWindowPos2i( screenWidth/2 - 100, screenHeight/2 );    // 字形左下角位置 原點為視窗左下角
-			for( int i=0 ; i < strlen( GameOver ) ; i++ )
-			{
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, GameOver[i]);
-			}
-		}
+                char Health[30], Score[100], HighScore[100], GameOver[] = "Game Over!!!! Press R to try again, Esc to quit...";
+                //===========血量部分
+                        if ( health < 0 ) { health = 0; } // 避免有負數血量的事情發生 20140113
+                        sprintf(Health, "Health  %d", health);
+                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+                        glWindowPos2i(20, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
+                        for( int i=0 ; i < strlen( Health ) ; i++ )
+                        {
+                                //glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, Health[i]);
+                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Health[i]);
+                        }
+                //===========分數部分
+                        sprintf(Score, "Score  %d", gamescore );
+                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+                        glWindowPos2i(20, screenHeight-100);    // 字形左下角位置 原點為視窗左下角
+                        for( int i=0 ; i < strlen( Score ) ; i++ )
+                        {
+                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Score[i]);
+                        }
+                //===========高分紀錄部分 20140113
+                        sprintf(HighScore, "High Score  %d", highscore );
+                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+                        glWindowPos2i( screenWidth/2, screenHeight-25);    // 字形左下角位置 原點為視窗左下角
+                        for( int i=0 ; i < strlen( HighScore ) ; i++ )
+                        {
+                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, HighScore[i]);
+                        }
+                //===========遊戲結束 20140113
+                if ( gameover == 1 ) {
+                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+                        glWindowPos2i( screenWidth/2 - 100, screenHeight/2 );    // 字形左下角位置 原點為視窗左下角
+                        for( int i=0 ; i < strlen( GameOver ) ; i++ )
+                        {
+                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, GameOver[i]);
+                        }
+                }
     glPopMatrix();
 
     glPopMatrix();
@@ -1760,10 +1766,10 @@ void TimerFunction(int value)
 void ChangeSize(int w, int h)
 {
     GLfloat fAspect;
-	/* Save the new width and height */
-	screenWidth  = w;
-	screenHeight = h;
-	//============================
+        /* Save the new width and height */
+        screenWidth  = w;
+        screenHeight = h;
+        //============================
     // Prevent a divide by zero, when window is too short
     // (you cant make a window of zero width).
     if(h == 0)
@@ -1785,10 +1791,10 @@ void ChangeSize(int w, int h)
 }
 //============鍵盤================(不會lag用)
 void init_KeyEvent( void ) { // 初始化這些按鍵
-	for( unsigned int i = 0 ; i < MAX_KEY_STATE; ++i )
-		keyState[i] = false;
-	for( unsigned int i = 0 ; i < MAX_SPECIAL_KEY_STATE; ++i )
-		specialKeyState[i] = false;
+        for( unsigned int i = 0 ; i < MAX_KEY_STATE; ++i )
+                keyState[i] = false;
+        for( unsigned int i = 0 ; i < MAX_SPECIAL_KEY_STATE; ++i )
+                specialKeyState[i] = false;
 }
 void setKeyStateUp( const unsigned char k ) { // 代表按下某鍵, true
     keyState[k] = false;
@@ -1825,168 +1831,181 @@ void keyDOWN( unsigned char key, int x, int y ) {
 int check_bound(float x,float y) //==true為在可活動範圍內
 {
 //===========有在可活動範為內會進到if內
-	if( (1.8/17.4)*x - y + 7.2552 > 0 )
-	{//======在CD兩點連線下方OK (X向右為正, Y向上為正)
-		if( 7.875*x - y + (-2.375) < 0 )
-		{//======在AF兩點連線左側OK (X向右為正, Y向上為正)
-			if( (0.6 / 6.2)*x - y + (-13.2645) < 0 )
-			{//======在AB兩點連線上方OK (X向右為正, Y向上為正)
-				if( 6.5*x - y + 35.4 > 0 )
-				{//======在BC兩點連線右側OK (X向右為正, Y向上為正)
-					return 1; // 玩家在"甲"區域內
-				}else{
-					return 0; // 玩家脫離可移動範圍!!!!!
-				}
-			}else{
-				return 0; // 玩家脫離可移動範圍!!!!!
-			}
-		}else{
-		//======在AF兩點連線右側&線上OK (X向右為正, Y向上為正)
-			if( (4/13)*x - y + (-0.8615) < 0 )
-			{//======在EF兩點連線上方OK (X向右為正, Y向上為正)
-				if( -27*x - y + 359.6 > 0 )
-				{//======在DE兩點連線左側OK (X向右為正, Y向上為正)
-					return 1; // 玩家在"乙"區域內
-				}else{
-					return 0; // 玩家脫離可移動範圍!!!!!
-				}
-			}else{
-				return 0; // 玩家脫離可移動範圍!!!!!
-			}
-		}
+        if( (1.8/17.4)*x - y + 7.2552 > 0 )
+        {//======在CD兩點連線下方OK (X向右為正, Y向上為正)
+                if( 7.875*x - y + (-2.375) < 0 )
+                {//======在AF兩點連線左側OK (X向右為正, Y向上為正)
+                        if( (0.6 / 6.2)*x - y + (-13.2645) < 0 )
+                        {//======在AB兩點連線上方OK (X向右為正, Y向上為正)
+                                if( 6.5*x - y + 35.4 > 0 )
+                                {//======在BC兩點連線右側OK (X向右為正, Y向上為正)
+                                        return 1; // 玩家在"甲"區域內
+                                }else{
+                                        return 0; // 玩家脫離可移動範圍!!!!!
+                                }
+                        }else{
+                                return 0; // 玩家脫離可移動範圍!!!!!
+                        }
+                }else{
+                //======在AF兩點連線右側&線上OK (X向右為正, Y向上為正)
+                        if( (4/13)*x - y + (-0.8615) < 0 )
+                        {//======在EF兩點連線上方OK (X向右為正, Y向上為正)
+                                if( -27*x - y + 359.6 > 0 )
+                                {//======在DE兩點連線左側OK (X向右為正, Y向上為正)
+                                        return 1; // 玩家在"乙"區域內
+                                }else{
+                                        return 0; // 玩家脫離可移動範圍!!!!!
+                                }
+                        }else{
+                                return 0; // 玩家脫離可移動範圍!!!!!
+                        }
+                }
     }else{
-		return 0; // 玩家脫離可移動範圍!!!!!
-	}
+                return 0; // 玩家脫離可移動範圍!!!!!
+        }
 }
 //=================================
 void update_game( int value )
 {
-	//=====處理一般key的部分
-	if ( isKeyStateDown(27) ) { // Esc
-		exit(0); // 結束遊戲
-	}
+        //=====處理一般key的部分
+        if ( isKeyStateDown(27) ) { // Esc
+                exit(0); // 結束遊戲
+        }
         //===================
-	if ( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
+        if ( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
-		if ( gameover == 0 ) { //如果gameover則不能移動
-			r+=0.8f;
-			face=0;
-			if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
-			{
-				frameCamera.MoveUp(0.2);
-				targety-=0.2;
-				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-				{
-					frameCamera.MoveUp(-0.2);
-					targety+=0.2;
-				}
-			}
-		}
-		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
-		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
-	}
+                if ( gameover == 0 ) { //如果gameover則不能移動
+                        r+=0.8f;
+                        face=0;
+                        if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
+                        {
+                                frameCamera.MoveUp(0.2);
+                                targety-=0.2;
+                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+                                {
+                                        frameCamera.MoveUp(-0.2);
+                                        targety+=0.2;
+                                }
+                        }
+                }
+                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+        }
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
         //Actorframe.MoveForward(-0.025f);
         //Actor_position_z-=0.2f;
-		if ( gameover == 0 ) { //如果gameover則不能移動
-			r-=0.8f;
-			face=2;
-			if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
-			{
-				frameCamera.MoveUp(-0.2); //====畫面動
-				targety+=0.2; 			//====人動
-				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-				{
-					frameCamera.MoveUp(+0.2);
-					targety-=0.2;
-				}
-			}
-		}
-		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
-		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
-	}
+                if ( gameover == 0 ) { //如果gameover則不能移動
+                        r-=0.8f;
+                        face=2;
+                        if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
+                        {
+                                frameCamera.MoveUp(-0.2); //====畫面動
+                                targety+=0.2;                         //====人動
+                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+                                {
+                                        frameCamera.MoveUp(+0.2);
+                                        targety-=0.2;
+                                }
+                        }
+                }
+                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+        }
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
         //Actorframe.RotateLocalY(0.1f);
         //Actor_yRot+=2.0f;
-		if ( gameover == 0 ) { //如果gameover則不能移動
-			r+=0.8f;
-			face=1;
-			if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
-			{
-				frameCamera.MoveRight(0.2);
-				targetx+=0.2;
-				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-				{
-					frameCamera.MoveRight(-0.2);
-					targetx-=0.2;
-				}
-			}
-		}
-		//printf("%f\n",check_bound(targetx,targety)); //邊件判定
-		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
-	}
+                if ( gameover == 0 ) { //如果gameover則不能移動
+                        r+=0.8f;
+                        face=1;
+                        if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
+                        {
+                                frameCamera.MoveRight(0.2);
+                                targetx+=0.2;
+                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+                                {
+                                        frameCamera.MoveRight(-0.2);
+                                        targetx-=0.2;
+                                }
+                        }
+                }
+                //printf("%f\n",check_bound(targetx,targety)); //邊件判定
+                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+        }
         //===================
     if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
         //Actorframe.RotateLocalY(-0.1f);
-		if ( gameover == 0 ) { //如果gameover則不能移動
-			r+=0.8f;
-			face=3;
-			if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
-			{
-				frameCamera.MoveRight(-0.2);
-				targetx-=0.2;
-				if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-				{
-					frameCamera.MoveRight(0.2);
-					targetx+=0.2;
-				}
-			}
-		}
-		//printf("%d\n",check_bound(targetx,targety)); //邊件判定
-		printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+                if ( gameover == 0 ) { //如果gameover則不能移動
+                        r+=0.8f;
+                        face=3;
+                        if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
+                        {
+                                frameCamera.MoveRight(-0.2);
+                                targetx-=0.2;
+                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
+                                {
+                                        frameCamera.MoveRight(0.2);
+                                        targetx+=0.2;
+                                }
+                        }
+                }
+                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
         //Actor_yRot-=2.0f;
-	}
+        }
         //===================
     if ( isKeyStateDown(' ') ) {
-		if ( gameover == 0 ) { //20140113
-			if(timer>=0) {
-				bb[bulletcount].setb();
-				bulletcount++;
-			if(bulletcount>=100) {
-				bulletcount=0;
-			}
-			timer=-30;
-			}
-		}
-	}
-	//=====處理SpecialKey的部分
+                if ( gameover == 0 ) { //20140113
+                        if(timer>=0) {
+                                bb[bulletcount].setb();
+                                bulletcount++;
+                        if(bulletcount>=100) {
+                                bulletcount=0;
+                        }
+                        timer=-30;
+                        }
+                }
+        }
+        //=====處理SpecialKey的部分
+	if( isKeyStateDown('v') || isKeyStateDown('V') ) {
+                if ( gameover == 0 ) { //20140113
+                        if ( view == 2 ) { //90度
+                            world.RotateLocalX(3.14159/view);
+							view = 4;
+							world.RotateLocalX(-3.14159/view);
+						}else if ( view == 4 ){ //45度
+						    world.RotateLocalX(3.14159/view);
+							view = 2;
+							world.RotateLocalX(-3.14159/view);
+						}
+                }
+    }
     if( isKeyStateDown('x') || isKeyStateDown('X') ) {
-		if ( gameover == 0 ) { //20140113
-			frameCamera.MoveForward(0.2f);
-		}
+                if ( gameover == 0 ) { //20140113
+                        frameCamera.MoveForward(0.2f);
+                }
     }
         //===================
     if( isKeyStateDown('z') || isKeyStateDown('Z') ) {
-		if ( gameover == 0 ) { //20140113
-			frameCamera.MoveForward(-0.2f);
-		}
+                if ( gameover == 0 ) { //20140113
+                        frameCamera.MoveForward(-0.2f);
+                }
     }
         //===================
-	if( isKeyStateDown('r') || isKeyStateDown('R') ) { // 重新開始遊戲 20140113
-		if ( gameover == 1 ) { //20140113
-			if ( gamescore >= highscore ) { // 刷新最高分數
-				highscore = gamescore;
-			}
-			gameover = 0;  //======重新開始遊戲!!!
-			gamescore = 0; //======重新開始計分!!!
-			health = 100;  //======血量重新補滿!!!
-		}
+        if( isKeyStateDown('r') || isKeyStateDown('R') ) { // 重新開始遊戲 20140113
+                if ( gameover == 1 ) { //20140113
+                        if ( gamescore >= highscore ) { // 刷新最高分數
+                                highscore = gamescore;
+                        }
+                        gameover = 0;  //======重新開始遊戲!!!
+                        gamescore = 0; //======重新開始計分!!!
+                        health = 100;  //======血量重新補滿!!!
+                }
     }
-	// 呼叫myDisplay重畫
-	glutPostRedisplay();
+        // 呼叫myDisplay重畫
+        glutPostRedisplay();
     glutTimerFunc( 33, update_game, 0);
 }
 //============主程式============
@@ -2000,9 +2019,9 @@ int main(int argc, char* argv[])
     glutDisplayFunc(RenderScene);
     //========================================
     init_KeyEvent(); // 初始化所有鍵盤上的按鍵
-	glutKeyboardUpFunc( keyUP );
+    glutKeyboardUpFunc( keyUP );
     glutKeyboardFunc( keyDOWN ); // 壓著鍵盤
-	glutSpecialUpFunc( SpecialKeyUP );
+    glutSpecialUpFunc( SpecialKeyUP );
     glutSpecialFunc( SpecialKeyDOWN ); // 壓著鍵盤
     //========================================
     //glutKeyboardFunc(Keys);      // (會lag)
