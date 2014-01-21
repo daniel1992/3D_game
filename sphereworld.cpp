@@ -1,6 +1,6 @@
 /*
-20140114更新部分
-蟲的速度, 子彈傷害, 視角切換(v鍵), 光源調整
+20140121更新部分
+邊界調整
 */
 //==========
 #include <stdlib.h>
@@ -44,7 +44,7 @@ void DrawFrame()
 //============視角切換==========
 int view = 4; //4為45度視角, 2為90度視角
 //============視窗==========
-int screenWidth = 800 , screenHeight = 700; // 視窗大小
+int screenWidth = 800 , screenHeight = 600; // 視窗大小
 //============遊戲分數==========
 bool gameover = 0;        // 目前是否遊戲結束 20140113
 int highscore = 0;        // 目前最高分數 20140113
@@ -58,7 +58,7 @@ bool specialKeyState[MAX_SPECIAL_KEY_STATE];
 #define NUM_MAP_OBJS    5  // 有幾種場景物體
 #define NUM_BODYPARTS    10
 #define NUM_WEAPONS    1
-#define BUG_NUM      10
+#define BUG_NUM      1
 //===========子彈用
 GLMmodel *BULL;
 //===========
@@ -92,8 +92,8 @@ bullet::bullet()
 {
     drawbullet=0;
     damage=25; //====子彈傷害係數
-    bx=targetx+cos(3.1415926/2*(vec-1));
-    by=targety+sin(3.1415923/2*(vec-1));
+    bx=targetx+cos(3.1415926/4*(vec-2));
+    by=targety+sin(3.1415923/4*(vec-2));
     bz=-0.25;
         //=========讀子彈obj
     BULL=glmReadOBJ("weapon/bullet.obj");
@@ -109,7 +109,7 @@ void bullet::draw()
     glColor3f(1.0,1.0,1.0);
     glScalef(0.15,0.15,0.15);
     glRotatef(90,0,1,0);
-    glRotatef(-90*(vec-1),1,0,0);
+    glRotatef(-45*(vec-2),1,0,0);
     glmDraw(BULL, GLM_SMOOTH|GLM_TEXTURE);
 }
 
@@ -119,8 +119,8 @@ void bullet::action()
     {
         draw();
     }
-        bx+=0.3*cos(3.1415926/2*(vec-1));
-        by+=0.3*sin(3.1415923/2*(vec-1));
+        bx+=0.3*cos(3.1415926/4*(vec-2));
+        by+=0.3*sin(3.1415923/4*(vec-2));
     if(pow(bx-targetx,2)+pow(by-targety,2)>100)
     {
         drawbullet=0;
@@ -129,8 +129,8 @@ void bullet::action()
 void bullet::setb()
 {
     vec=face;
-    bx=targetx+0.5*cos(3.1415926/2*(vec-1));
-    by=targety+0.5*sin(3.1415923/2*(vec-1));
+    bx=targetx+0.5*cos(3.1415926/4*(vec-2));
+    by=targety+0.5*sin(3.1415923/4*(vec-2));
     drawbullet=1;
 }
 int bullet::hit() {
@@ -962,6 +962,7 @@ char *map_scene[] = {"old fashion town/electric_pole.obj","old fashion town/grou
 
 char *weapons[] = {"weapon/handgun.obj"};
 //主角變數
+float bound[8][6]={{-1.39,-30,-1.405,-5.1,1.66,0.001},{-1.405,-5.1,0.8,0.95,2.74,-1},{0.8,0.95,19.4,4.325,0.18,-1},{13.2,3.2,12.8,14,2.7,1},{13,8.6,-7.43,6.5,0.99,10},{-4.4,6.8,-10.8,-13.2,-3.125,1},{-7.6,-3.2,-8,-24.8,-5.4,0.1},{-7.8,-14,-1.4,-13.4,0.94,-10}};
 static GLfloat zTra = 0.0f;
 static GLfloat xRot = 0.0f;
 static GLfloat r = 0.0f;
@@ -1016,7 +1017,7 @@ void Actor::drawActor(/*int gun_id*/)
     glTranslatef(0.0f, 0.2f, 0.0f);
     glRotatef(90,1,0,0);
 
-    glRotatef(90*face,0,1,0);
+    glRotatef(45*face,0,1,0);
     glScalef(1.5,1.5,1.5);
 
 
@@ -1366,6 +1367,12 @@ void ShutdownRC(void)
     glDeleteTextures(NUM_TEXTURES, textureObjects);
 }
 
+bool AABBtest(float ax1, float ay1, float ax2, float ay2, float bx1, float by1, float bx2, float by2)
+{ // 無碰撞 → 回傳true
+    return
+        ax1 > bx2 || ax2 < bx1 ||
+        ay1 > by2 || ay2 < by1;
+}
 
 ///////////////////////////////////////////////////////////
 // Draw the ground as a series of triangle strips
@@ -1464,6 +1471,7 @@ void DrawInhabitants(GLint nShadow)
     glPushMatrix();
 
     Actor actor;
+    glTranslatef(1.0,1.0,0.0);
     actor.drawActor();
     glPopMatrix();
 //畫蟲
@@ -1679,13 +1687,16 @@ void SpecialKeys(int key, int x, int y) // 會lag 目前不要用
 
 void Keys(unsigned char key, int x, int y) // 會lag 目前不要用
 {
+    printf("%ud\n",key);
     switch(key)
     {
+
     case 'w':
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
         r+=0.8f;
         face=0;
+
         if(check(targetx,targety-0.2))
         {
             frameCamera.MoveUp(0.2);
@@ -1831,7 +1842,15 @@ void keyDOWN( unsigned char key, int x, int y ) {
 int check_bound(float x,float y) //==true為在可活動範圍內
 {
 //===========有在可活動範為內會進到if內
-        if( (1.8/17.4)*x - y + 7.2552 > 0 )
+
+        for(int i=0;i<8;i++) {
+            if(!AABBtest(x,y,x,y,bound[i][0],bound[i][1],bound[i][2]+bound[i][4],bound[i][3]+bound[i][5])) {
+                return 0;
+            }
+        }
+
+        return 1;
+        /*if( (1.8/17.4)*x - y + 7.2552 > 0 )
         {//======在CD兩點連線下方OK (X向右為正, Y向上為正)
                 if( 7.875*x - y + (-2.375) < 0 )
                 {//======在AF兩點連線左側OK (X向右為正, Y向上為正)
@@ -1862,7 +1881,7 @@ int check_bound(float x,float y) //==true為在可活動範圍內
                 }
     }else{
                 return 0; // 玩家脫離可移動範圍!!!!!
-        }
+        }*/
 }
 //=================================
 void update_game( int value )
@@ -1876,16 +1895,28 @@ void update_game( int value )
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
                 if ( gameover == 0 ) { //如果gameover則不能移動
+                        float turnangle=1;
                         r+=0.8f;
+                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT )) {
+                            r-=0.4f;
+                            turnangle=cos(3.1415926/4);
+
+                        }
                         face=0;
+                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )){
+                                face+=7;
+                            }
+                        else if(isSpecialKeyStateDown( GLUT_KEY_LEFT )){
+                                face+=1;
+                            }
                         if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
                         {
-                                frameCamera.MoveUp(0.2);
-                                targety-=0.2;
+                                frameCamera.MoveUp(0.2*turnangle);
+                                targety-=0.2*turnangle;
                                 if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
                                 {
-                                        frameCamera.MoveUp(-0.2);
-                                        targety+=0.2;
+                                        frameCamera.MoveUp(-0.2*turnangle);
+                                        targety+=0.2*turnangle;
                                 }
                         }
                 }
@@ -1897,16 +1928,27 @@ void update_game( int value )
         //Actorframe.MoveForward(-0.025f);
         //Actor_position_z-=0.2f;
                 if ( gameover == 0 ) { //如果gameover則不能移動
-                        r-=0.8f;
-                        face=2;
+                        float turnangle=1;
+                        r+=0.8f;
+                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT )) {
+                            r-=0.4f;
+                            turnangle=cos(3.1415926/4);
+                        }
+                        face=4;
+                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )){
+                                face+=1;
+                            }
+                        else if(isSpecialKeyStateDown( GLUT_KEY_LEFT )){
+                                face-=1;
+                            }
                         if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
                         {
-                                frameCamera.MoveUp(-0.2); //====畫面動
-                                targety+=0.2;                         //====人動
+                                frameCamera.MoveUp(-0.2*turnangle); //====畫面動
+                                targety+=0.2*turnangle;                         //====人動
                                 if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
                                 {
-                                        frameCamera.MoveUp(+0.2);
-                                        targety-=0.2;
+                                        frameCamera.MoveUp(+0.2*turnangle);
+                                        targety-=0.2*turnangle;
                                 }
                         }
                 }
@@ -1918,16 +1960,27 @@ void update_game( int value )
         //Actorframe.RotateLocalY(0.1f);
         //Actor_yRot+=2.0f;
                 if ( gameover == 0 ) { //如果gameover則不能移動
+                        float turnangle=1;
                         r+=0.8f;
-                        face=1;
+                        if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN )) {
+                            r-=0.4f;
+                            turnangle=cos(3.1415926/4);
+                        }
+                        face=2;
+                        if(isSpecialKeyStateDown( GLUT_KEY_UP )){
+                                face-=1;
+                            }
+                        else if(isSpecialKeyStateDown( GLUT_KEY_DOWN )){
+                                face+=1;
+                            }
                         if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
                         {
-                                frameCamera.MoveRight(0.2);
-                                targetx+=0.2;
+                                frameCamera.MoveRight(0.2*turnangle);
+                                targetx+=0.2*turnangle;
                                 if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
                                 {
-                                        frameCamera.MoveRight(-0.2);
-                                        targetx-=0.2;
+                                        frameCamera.MoveRight(-0.2*turnangle);
+                                        targetx-=0.2*turnangle;
                                 }
                         }
                 }
@@ -1939,15 +1992,26 @@ void update_game( int value )
         //Actorframe.RotateLocalY(-0.1f);
                 if ( gameover == 0 ) { //如果gameover則不能移動
                         r+=0.8f;
-                        face=3;
+                        float turnangle=1;
+                        if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN )) {
+                            r-=0.4f;
+                            turnangle=cos(3.1415926/4);
+                        }
+                        face=6;
+                        if(isSpecialKeyStateDown( GLUT_KEY_UP )){
+                                face+=1;
+                            }
+                        else if(isSpecialKeyStateDown( GLUT_KEY_DOWN )){
+                                face-=1;
+                            }
                         if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
                         {
-                                frameCamera.MoveRight(-0.2);
-                                targetx-=0.2;
+                                frameCamera.MoveRight(-0.2*turnangle);
+                                targetx-=0.2*turnangle;
                                 if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
                                 {
-                                        frameCamera.MoveRight(0.2);
-                                        targetx+=0.2;
+                                        frameCamera.MoveRight(0.2*turnangle);
+                                        targetx+=0.2*turnangle;
                                 }
                         }
                 }
