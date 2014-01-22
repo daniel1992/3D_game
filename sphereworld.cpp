@@ -1,6 +1,11 @@
 /*
-20140121更新部分
-邊界調整
+20140122更新部分
+完成邊界判斷
+增加死亡動畫
+遊戲重新開始後會重置設定
+更新血調
+增加combo系統
+調整遊戲難度
 */
 //==========
 #include <stdlib.h>
@@ -20,26 +25,26 @@ using namespace std;
 #include <GL/glut.h>
 void DrawFrame()
 {
-        // 紅 X
-        glBegin(GL_LINES);
-        glColor3ub(255,0,0);
-        glVertex3f(0,0,0);
-        glVertex3f(1,0,0);
-        glEnd();
-        // 黃 Y
-        glBegin(GL_LINES);
-        glColor3ub(255,255,0);
-        glVertex3f(0,0,0);
-        glVertex3f(0,1,0);
-        glEnd();
-        // 綠 Z
-        glBegin(GL_LINES);
-        glColor3ub(0,255,0);
-        glVertex3f(0,0,0);
-        glVertex3f(0,0,1);
-        glEnd();
+    // 紅 X
+    glBegin(GL_LINES);
+    glColor3ub(255,0,0);
+    glVertex3f(0,0,0);
+    glVertex3f(1,0,0);
+    glEnd();
+    // 黃 Y
+    glBegin(GL_LINES);
+    glColor3ub(255,255,0);
+    glVertex3f(0,0,0);
+    glVertex3f(0,1,0);
+    glEnd();
+    // 綠 Z
+    glBegin(GL_LINES);
+    glColor3ub(0,255,0);
+    glVertex3f(0,0,0);
+    glVertex3f(0,0,1);
+    glEnd();
 
-        glColor3ub(255,255,255);
+    glColor3ub(255,255,255);
 }
 //============視角切換==========
 int view = 4; //4為45度視角, 2為90度視角
@@ -58,7 +63,7 @@ bool specialKeyState[MAX_SPECIAL_KEY_STATE];
 #define NUM_MAP_OBJS    5  // 有幾種場景物體
 #define NUM_BODYPARTS    10
 #define NUM_WEAPONS    1
-#define BUG_NUM      1
+#define BUG_NUM      15
 //===========子彈用
 GLMmodel *BULL;
 //===========
@@ -67,11 +72,17 @@ float obstacley[BUG_NUM]= {0};
 int casualty=-1;
 int hurt=0;
 int bdamage=10;  //蟲傷害係數
-float targetx=0;
-float targety=0;
+float targetx=1;
+float targety=1;
 float targetz=1.75;
 int face=0;
+int combo=0;
+int combotime=0;
+int combolimit;
+int achieve=0;
+int num=5;
 /////bullet class
+int check_bound(float x,float y);
 class bullet
 {
 public:
@@ -95,7 +106,7 @@ bullet::bullet()
     bx=targetx+cos(3.1415926/4*(vec-2));
     by=targety+sin(3.1415923/4*(vec-2));
     bz=-0.25;
-        //=========讀子彈obj
+    //=========讀子彈obj
     BULL=glmReadOBJ("weapon/bullet.obj");
     glmUnitize(BULL);
     glmFacetNormals(BULL);
@@ -119,8 +130,8 @@ void bullet::action()
     {
         draw();
     }
-        bx+=0.3*cos(3.1415926/4*(vec-2));
-        by+=0.3*sin(3.1415923/4*(vec-2));
+    bx+=0.3*cos(3.1415926/4*(vec-2));
+    by+=0.3*sin(3.1415923/4*(vec-2));
     if(pow(bx-targetx,2)+pow(by-targety,2)>100)
     {
         drawbullet=0;
@@ -133,10 +144,12 @@ void bullet::setb()
     by=targety+0.5*sin(3.1415923/4*(vec-2));
     drawbullet=1;
 }
-int bullet::hit() {
-    for(int i=0; i<BUG_NUM; i++)
+int bullet::hit()
+{
+    for(int i=0; i<num; i++)
     {
-        if(pow(obstaclex[i]-bx,2)+pow(obstacley[i]-by,2)<0.5){
+        if(pow(obstaclex[i]-bx,2)+pow(obstacley[i]-by,2)<0.5)
+        {
             drawbullet=0;
             by=-100;
             bx=-100;
@@ -170,6 +183,7 @@ public:
     int scrawl;
     int sdie;
     int health;
+    float speed;
 
 
 private:
@@ -179,7 +193,6 @@ private:
     float movex;
     float movey;
     float movez;
-    float speed;
     int head;
     int antenna;
     int attacktimer;
@@ -544,7 +557,7 @@ void bug::attack(int i)
                 angle[j][4]-=0.6;
 
             }
-            if(i==50&&pow(movex-targetx,2)-pow(movey-targety,2)<1)
+            if(i==50&&pow(movex-targetx,2)-pow(movey-targety,2)<0.5)
             {
                 hurt++;
             }
@@ -578,8 +591,8 @@ void bug::attacked(int i)
 
         if(i<25)
         {
-            movex-=0.02*cos(turn/180*3.1415926);
-            movey-=0.02*sin(turn/180*3.1415926);
+            movex-=0.04*cos(turn/180*3.1415926);
+            movey-=0.04*sin(turn/180*3.1415926);
             for(int j=0; j<6; j++)
             {
 
@@ -614,6 +627,17 @@ void bug::attacked(int i)
 }
 void bug::die(int i)
 {
+    if(i==0)
+    {
+        combotime=0;
+        combo++;
+        achieve=1;
+        gamescore += 1000; // 成功殺死一隻蟲
+        if(gamescore/1000>20&&speed<0.05)
+        {
+            speed+=0.01;
+        }
+    }
     if(i<200)
     {
         if(i<50)
@@ -646,14 +670,29 @@ void bug::die(int i)
         flip=0;
         dietimer=0;
         health=100;
-        setlocation(rand()%20-10,rand()%20-10,-1);
-        for(int j=0; j<BUG_NUM; j++)
+        if(rand()%2==0)
+        {
+            setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+        }
+        else
+        {
+            setlocation(13+rand()%5,3.5+rand()%6,-1);
+        }
+
+        for(int j=0; j<num; j++)
         {
             if(obstaclex[j]==movex)
             {
                 if(obstacley[j]==movey)
                 {
-                    setlocation(rand()%20-10,rand()%20-10,-1);
+                    if(rand()%2==0)
+                    {
+                        setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                    }
+                    else
+                    {
+                        setlocation(13+rand()%5,3.5+rand()%6,-1);
+                    }
                     j=-1;
                 }
             }
@@ -685,10 +724,10 @@ void bug::crawl(int i)
 
     float t=1;
 
-    if(i<60)
+    if(i<40)
     {
 
-        t=2*sin(3.14159/30*i);
+        t=2*sin(3.14159/20*i);
 
 
         angle[0][0]=-30+10*t;
@@ -789,11 +828,67 @@ void bug::moving(double targetx, double targety)
 
             areaclear=1;
             cyclecount++;
-            for(int i=0; i<BUG_NUM; i++)
+            if(check_bound(movex,movey)==0)
+            {
+                areaclear=0;
+                if(faketurn>180)
+                {
+                    faketurn-=45;
+                }
+                else
+                {
+                    faketurn+=45;
+                }
+                if (cyclecount>50)
+                {
+                    movex=originx-otherx*0.2*(cyclecount%100+1);
+                    movey=originy-othery*0.2*(cyclecount%100+1);
+                }
+                if(areaclear==1||cyclecount>200)
+                {
+                    movex=originx;
+                    movey=originy;
+                    if(check_bound(originx,originy)==0)
+                    {
+                        if(rand()%2==0)
+                        {
+                            setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                        }
+                        else
+                        {
+                            setlocation(13+rand()%5,3.5+rand()%6,-1);
+                        }
+
+                        for(int j=0; j<num; j++)
+                        {
+                            if(obstaclex[j]==movex)
+                            {
+                                if(obstacley[j]==movey)
+                                {
+                                    if(rand()%2==0)
+                                    {
+                                        setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                                    }
+                                    else
+                                    {
+                                        setlocation(13+rand()%5,3.5+rand()%6,-1);
+                                    }
+                                    j=-1;
+                                }
+                            }
+                        }
+
+                    }
+                    break;
+                }
+                //printf("%d\n",cyclecount);
+                continue;
+            }
+            for(int i=0; i<num; i++)
             {
 
 
-                if((pow(obstaclex[i]-movex,2)+pow(obstacley[i]-movey,2)<1)&&i!=number)
+                if(((pow(obstaclex[i]-movex,2)+pow(obstacley[i]-movey,2)<1)&&i!=number))
                 {
 
 
@@ -911,12 +1006,14 @@ void bug::moving(double targetx, double targety)
         sattack=1;
     }
 }
-void bug::healthdamage(int d) {
-        health-=d;
+void bug::healthdamage(int d)
+{
+    health-=d;
     sattacked=1;
-    if(health==0) { //20140113
+    if(health<=0)   //20140113
+    {
         sdie=1;
-                gamescore += 1000; // 成功殺死一隻蟲
+
     }
 }
 
@@ -962,7 +1059,7 @@ char *map_scene[] = {"old fashion town/electric_pole.obj","old fashion town/grou
 
 char *weapons[] = {"weapon/handgun.obj"};
 //主角變數
-float bound[8][6]={{-1.39,-30,-1.405,-5.1,1.66,0.001},{-1.405,-5.1,0.8,0.95,2.74,-1},{0.8,0.95,19.4,4.325,0.18,-1},{13.2,3.2,12.8,14,2.7,1},{13,8.6,-7.43,6.5,0.99,10},{-4.4,6.8,-10.8,-13.2,-3.125,1},{-7.6,-3.2,-8,-24.8,-5.4,0.1},{-7.8,-14,-1.4,-13.4,0.94,-10}};
+float bound[8][6]= {{-1.4,-13.4,-1.405,-5.1,1.66,0.001},{-1.405,-5.1,0.8,0.95,2.74,-1},{0.8,0.95,19.4,4.325,0.18,-1},{13.8,3.2,12.8,14,2.7,1},{13,8.6,-7.43,6.5,0.99,10},{-4.4,6.8,-10.8,-13.2,-3.125,1},{-7.6,-3.2,-8,-24.8,-5.4,0.1},{-7.8,-14,-1.4,-13.4,0.94,-10}};
 static GLfloat zTra = 0.0f;
 static GLfloat xRot = 0.0f;
 static GLfloat r = 0.0f;
@@ -982,6 +1079,14 @@ float yro=0;
 float flip=0;
 int bulletcount=0;
 int timer=0;
+float headx=0;
+float heady=-1.32;
+float headz=0;
+float headr=0;
+float bodyy=0;
+float bodyz=0;
+float bodyr=0;
+
 
 bug test[BUG_NUM];
 bullet bb[100];
@@ -1021,7 +1126,7 @@ void Actor::drawActor(/*int gun_id*/)
     glScalef(1.5,1.5,1.5);
 
 
- /////20140113 手槍
+/////20140113 手槍
 
     glPushMatrix();
 
@@ -1029,18 +1134,29 @@ void Actor::drawActor(/*int gun_id*/)
 
     glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
     glScalef(1.0, 1.0, 1.0);
-    glTranslatef(0.0f,-1.32f,0.0f);
+    glPushMatrix();
+    glTranslatef(headx,heady,headz);
+    glRotatef(headr,1,0,0);
 
 
     glmDraw(MODEL_bodyparts[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+    glPopMatrix();
+    glTranslatef(0.0,-1.32,0.0);
     //DrawFrame();
     Weapon handgun;
+    if(gameover==1)
+    {
+        glScalef(0,0,0);
+    }
     handgun.drawWeapon();
+
     glPopMatrix();
 
 //}
     //glMaterialfv(GL_FRONT, GL_SPECULAR, fNoLight);
     //身體
+    glTranslatef(0,bodyy,bodyz);
+    glRotatef(bodyr,1,0,0);
     glPushMatrix();
     glBindTexture(GL_TEXTURE_2D, textureObjects[ACTOR_TEXTURE]);
     glScalef(0.5, 0.5, 0.5);
@@ -1166,7 +1282,7 @@ void Weapon::drawWeapon(/*int gun_id*/)
 
 bool check(float x, float y)
 {
-    for(int i=0; i<BUG_NUM; i++)
+    for(int i=0; i<num; i++)
     {
         if(pow(obstaclex[i]-x,2)+pow(obstacley[i]-y,2)<0.5)
             return false;
@@ -1183,6 +1299,8 @@ void SetupRC()
     };
     int iSphere;
     int i;
+
+    srand(time(NULL));
 
 
     world.SetOrigin(0.0f, 0.34f, -2.5);
@@ -1249,6 +1367,16 @@ void SetupRC()
     glLightfv(GL_LIGHT0, GL_SPECULAR, fBrightLight);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+
+
+
+    glLightfv(GL_LIGHT1, GL_AMBIENT, fBrightLight);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, fBrightLight);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, fBrightLight);
+
+    glLightfv(GL_LIGHT2, GL_AMBIENT, fBrightLight);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, fBrightLight);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, fBrightLight);
 
     // Calculate shadow matrix
     glPushMatrix();
@@ -1342,14 +1470,29 @@ void SetupRC()
 
     for(int i=0; i<BUG_NUM; i++)
     {
-        test[i].setlocation(rand()%20-10,rand()%20-10,-1);
+        if(rand()%2==0)
+        {
+            test[i].setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+        }
+        else
+        {
+            test[i].setlocation(13+rand()%5,3.5+rand()%6,-1);
+        }
+
         for(int j=0; j<i; j++)
         {
             if(test[j].getx()==test[i].getx())
             {
                 if(test[j].gety()==test[i].gety())
                 {
-                    test[i].setlocation(rand()%20-10,rand()%20-10,-1);
+                    if(rand()%2==0)
+                    {
+                        test[i].setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                    }
+                    else
+                    {
+                        test[i].setlocation(13+rand()%5,3.5+rand()%6,-1);
+                    }
                     j=-1;
                 }
             }
@@ -1367,15 +1510,11 @@ void ShutdownRC(void)
     glDeleteTextures(NUM_TEXTURES, textureObjects);
 }
 
-bool AABBtest(float ax1, float ay1, float ax2, float ay2, float bx1, float by1, float bx2, float by2)
-{ // 無碰撞 → 回傳true
-    return
-        ax1 > bx2 || ax2 < bx1 ||
-        ay1 > by2 || ay2 < by1;
-}
-
 ///////////////////////////////////////////////////////////
 // Draw the ground as a series of triangle strips
+GLfloat	 lightPos2[] = { frameCamera.GetOriginX()-3,frameCamera.GetOriginY(),frameCamera.GetOriginZ()-2.5, 0.0f };
+GLfloat  lightPos3[] = { frameCamera.GetOriginX()+1.7,frameCamera.GetOriginY(),frameCamera.GetOriginZ()-1.5, 0.0f };
+
 void DrawGround(void)
 {
     /* GLfloat fExtent = 20.0f;
@@ -1413,12 +1552,77 @@ void DrawGround(void)
 }
 void healthdamage()
 {
-        if ( health > 0 ) { //20140113
-    health-=hurt*bdamage;
-        }else{
-                gameover = 1; // 人的血量歸零,遊戲結束
-        }
+    if ( health > 0 )   //20140113
+    {
+        health-=hurt*bdamage;
+    }
+    else
+    {
+        gameover = 1; // 人的血量歸零,遊戲結束
+    }
     hurt=0;
+}
+
+void headroll(int i)
+{
+
+    static float t=0.68;
+    state=1;
+
+    if(i<60)
+    {
+        headz+=-0.04;
+        if(i%24==12)
+        {
+            t=t/2;
+        }
+        if(i>=12&&i<=36)
+        {
+            heady=-2-t*cos(3.1415926/24*i);
+        }
+        else
+        {
+            heady=-2+t*cos(3.1415926/24*i);
+        }
+
+        headr=i*60;
+
+        if(i<40)
+        {
+            bodyr=i*-90/40;
+
+            bodyy=-2+2*cos(3.1415926/80*i);
+            bodyz=-2*sin(3.1415926/80*i);
+        }
+
+        printf("%f\n",t);
+
+        if(gameover!=1)
+        {
+            i+=60;
+            headx=0;
+            heady=-1.32;
+            headz=0;
+            headr=0;
+            state=0;
+            bodyy=0;
+            bodyz=0;
+            bodyr=0;
+
+        }
+
+        i++;
+
+        glutTimerFunc(33,headroll,i);
+
+    }
+    else
+    {
+
+        t=0.68;
+
+    }
+    glutPostRedisplay();
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -1471,7 +1675,6 @@ void DrawInhabitants(GLint nShadow)
     glPushMatrix();
 
     Actor actor;
-    glTranslatef(1.0,1.0,0.0);
     actor.drawActor();
     glPopMatrix();
 //畫蟲
@@ -1489,14 +1692,14 @@ void DrawInhabitants(GLint nShadow)
 
 //    for(i = 0; i < NUM_MAP_OBJS; i++)
     //  {
-   /* glPushMatrix();
-    glRotatef(90,1,0,0);
-    //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
-    glBindTexture(GL_TEXTURE_2D, map_textureObjects[0]);
-    glScalef(21.0, 21.0, 21.0);
-    glTranslatef(0.0f,0.023f,0.0f);
-    glmDraw(MODEL_SCENE[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
-    glPopMatrix();*/
+    /* glPushMatrix();
+     glRotatef(90,1,0,0);
+     //glBindTexture(GL_TEXTURE_2D, textureObjects[FACE_TEXTURE]);
+     glBindTexture(GL_TEXTURE_2D, map_textureObjects[0]);
+     glScalef(21.0, 21.0, 21.0);
+     glTranslatef(0.0f,0.023f,0.0f);
+     glmDraw(MODEL_SCENE[0], GLM_SMOOTH | GLM_TEXTURE);//GLM_FLAT
+     glPopMatrix();*/
 
     glPushMatrix();
     glRotatef(90,1,0,0);
@@ -1549,6 +1752,37 @@ void DrawInhabitants(GLint nShadow)
 }
 
 
+void combocount()
+{
+
+    if(combo>=10&&combo%10==0&&health<100&&achieve==1)
+    {
+        health+=10;
+        achieve=0;
+    }
+
+
+    if(combo<=10)
+    {
+        combolimit=1000-combo*50;
+    }
+    else
+    {
+        combolimit=500-(combo-10)*25;
+        if(combolimit<50)
+        {
+            combolimit=50;
+        }
+    }
+
+    if(combotime>combolimit)
+    {
+        combo=0;
+        combotime=0;
+    }
+
+}
+
 // Called to draw scene
 void RenderScene(void)
 {
@@ -1595,7 +1829,20 @@ void RenderScene(void)
     //printf("%d\n",health);
     glPopMatrix();
 
-    for(int i=0; i<BUG_NUM; i++)
+    if(gamescore/1000==10)
+    {
+        num=10;
+    }
+
+    else if(gamescore/1000==20)
+    {
+        num=15;
+    }
+
+    //printf("%f, %f\n",test[5].getx(),test[5].gety());
+
+
+    for(int i=0; i<num; i++)
     {
         glPushMatrix();
         world.ApplyActorTransform();
@@ -1614,49 +1861,122 @@ void RenderScene(void)
         world.ApplyActorTransform();
         bb[i].action();
         casualty=bb[i].hit();
-        if(casualty!=-1) {
-            test[casualty].healthdamage(bb[i].damage);
+        if(casualty!=-1)
+        {
+            test[casualty].healthdamage(bb[i].damage+combo*2);
         }
         glPopMatrix();
     }
 
     glPushMatrix();
-                char Health[30], Score[100], HighScore[100], GameOver[] = "Game Over!!!! Press R to try again, Esc to quit...";
-                //===========血量部分
-                        if ( health < 0 ) { health = 0; } // 避免有負數血量的事情發生 20140113
-                        sprintf(Health, "Health  %d", health);
-                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-                        glWindowPos2i(20, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
-                        for( int i=0 ; i < strlen( Health ) ; i++ )
-                        {
-                                //glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, Health[i]);
-                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Health[i]);
-                        }
-                //===========分數部分
-                        sprintf(Score, "Score  %d", gamescore );
-                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-                        glWindowPos2i(20, screenHeight-100);    // 字形左下角位置 原點為視窗左下角
-                        for( int i=0 ; i < strlen( Score ) ; i++ )
-                        {
-                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Score[i]);
-                        }
-                //===========高分紀錄部分 20140113
-                        sprintf(HighScore, "High Score  %d", highscore );
-                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-                        glWindowPos2i( screenWidth/2, screenHeight-25);    // 字形左下角位置 原點為視窗左下角
-                        for( int i=0 ; i < strlen( HighScore ) ; i++ )
-                        {
-                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, HighScore[i]);
-                        }
-                //===========遊戲結束 20140113
-                if ( gameover == 1 ) {
-                        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
-                        glWindowPos2i( screenWidth/2 - 100, screenHeight/2 );    // 字形左下角位置 原點為視窗左下角
-                        for( int i=0 ; i < strlen( GameOver ) ; i++ )
-                        {
-                                glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, GameOver[i]);
-                        }
-                }
+    glLightfv(GL_LIGHT1,GL_POSITION,lightPos2);
+    glLightfv(GL_LIGHT2,GL_POSITION,lightPos3);
+
+    glTranslatef(frameCamera.GetOriginX()-2.1,frameCamera.GetOriginY()-7,frameCamera.GetOriginZ()-1.9);
+    glEnable(GL_LIGHT1);
+
+    glPushMatrix();
+    glScalef(0.15,0.2,0.2);
+    for(int i=0; i<10; i++)
+    {
+        if(i<health/10)
+        {
+            glColor3f(0.0,1.0,0.0);
+        }
+        else
+        {
+            glColor3f(1.0,0.0,0.0);
+        }
+        glutSolidCube(1);
+        glTranslatef(1,0,0);
+
+    }
+    glPopMatrix();
+    glDisable(GL_LIGHT1);
+    combocount();
+    glEnable(GL_LIGHT2);
+    glTranslatef(4.7,0,0.32);
+    glPushMatrix();
+    glScalef(0.03,0.2,0.2);
+    glColor3f(0.0,0.0,1.0);
+    int limit=(combolimit-combotime)/(combolimit/50);
+    if(combo!=0)
+    {
+        for(int i=0; i<limit; i++)
+        {
+            glutSolidCube(1);
+            glTranslatef(-1,0,0);
+        }
+    }
+
+    glPopMatrix();
+
+    glDisable(GL_LIGHT2);
+    glPopMatrix();
+
+
+
+    glPushMatrix();
+    char Health[30], Score[100], HighScore[100],Combo[100], GameOver[] = "Game Over!!!! Press R to try again, Esc to quit...";
+    //===========血量部分
+    if ( health < 0 )
+    {
+        health = 0;    // 避免有負數血量的事情發生 20140113
+    }
+    sprintf(Health, "Health");
+    glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+    glWindowPos2i(20, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
+    for( int i=0 ; i < strlen( Health ) ; i++ )
+    {
+        //glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, Health[i]);
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Health[i]);
+    }
+    //===========分數部分
+    sprintf(Score, "Score  %d", gamescore );
+    glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+    glWindowPos2i(20, screenHeight-100);    // 字形左下角位置 原點為視窗左下角
+    for( int i=0 ; i < strlen( Score ) ; i++ )
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Score[i]);
+    }
+    //===========高分紀錄部分 20140113
+    sprintf(HighScore, "High Score  %d", highscore );
+    glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+    glWindowPos2i( screenWidth/2, screenHeight-25);    // 字形左下角位置 原點為視窗左下角
+    for( int i=0 ; i < strlen( HighScore ) ; i++ )
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, HighScore[i]);
+    }
+
+    sprintf(Combo, "Combo  x%d", combo );
+    if(targetx<0.12)
+    {
+        glColor3f(1.0, 1.0, 1.0);  // 字形顏色紅
+    }
+    else
+    {
+        glColor3f(1.0,0.0,0.0);
+    }
+    glWindowPos2i( screenWidth-160, screenHeight-50);    // 字形左下角位置 原點為視窗左下角
+    for( int i=0 ; i < strlen( Combo ) ; i++ )
+    {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, Combo[i]);
+    }
+
+    //===========遊戲結束 20140113
+    if ( gameover == 1 )
+    {
+        if(state==0)
+        {
+            headroll(0);
+        }
+        glColor3f(1.0, 0.0, 0.0);  // 字形顏色紅
+        glWindowPos2i( screenWidth/2 - 100, screenHeight/2 );    // 字形左下角位置 原點為視窗左下角
+        for( int i=0 ; i < strlen( GameOver ) ; i++ )
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, GameOver[i]);
+        }
+    }
     glPopMatrix();
 
     glPopMatrix();
@@ -1746,13 +2066,15 @@ void Keys(unsigned char key, int x, int y) // 會lag 目前不要用
         break;
     case ' ':
 
-        if(timer>=0) {
-        bb[bulletcount].setb();
-        bulletcount++;
-        if(bulletcount>=100) {
-            bulletcount=0;
-        }
-        timer=-30;
+        if(timer>=0)
+        {
+            bb[bulletcount].setb();
+            bulletcount++;
+            if(bulletcount>=100)
+            {
+                bulletcount=0;
+            }
+            timer=-30;
         }
 
 
@@ -1770,6 +2092,7 @@ void TimerFunction(int value)
 {
     // Redraw the scene with new coordinates
     timer++;
+    combotime++;
     glutPostRedisplay();
     glutTimerFunc(3,TimerFunction, 1);
 }
@@ -1777,10 +2100,10 @@ void TimerFunction(int value)
 void ChangeSize(int w, int h)
 {
     GLfloat fAspect;
-        /* Save the new width and height */
-        screenWidth  = w;
-        screenHeight = h;
-        //============================
+    /* Save the new width and height */
+    screenWidth  = w;
+    screenHeight = h;
+    //============================
     // Prevent a divide by zero, when window is too short
     // (you cant make a window of zero width).
     if(h == 0)
@@ -1801,41 +2124,52 @@ void ChangeSize(int w, int h)
     glLoadIdentity();
 }
 //============鍵盤================(不會lag用)
-void init_KeyEvent( void ) { // 初始化這些按鍵
-        for( unsigned int i = 0 ; i < MAX_KEY_STATE; ++i )
-                keyState[i] = false;
-        for( unsigned int i = 0 ; i < MAX_SPECIAL_KEY_STATE; ++i )
-                specialKeyState[i] = false;
+void init_KeyEvent( void )   // 初始化這些按鍵
+{
+    for( unsigned int i = 0 ; i < MAX_KEY_STATE; ++i )
+        keyState[i] = false;
+    for( unsigned int i = 0 ; i < MAX_SPECIAL_KEY_STATE; ++i )
+        specialKeyState[i] = false;
 }
-void setKeyStateUp( const unsigned char k ) { // 代表按下某鍵, true
+void setKeyStateUp( const unsigned char k )   // 代表按下某鍵, true
+{
     keyState[k] = false;
 }
-void setSpecialKeyStateUp( const int k ) { // 代表按下某鍵(F1~F12,上下左右等), true
+void setSpecialKeyStateUp( const int k )   // 代表按下某鍵(F1~F12,上下左右等), true
+{
     specialKeyState[k] = false;
 }
-void setKeyStateDown( const unsigned char k ) { // 代表放開某鍵, false
+void setKeyStateDown( const unsigned char k )   // 代表放開某鍵, false
+{
     keyState[k] = true;
 }
-void setSpecialKeyStateDown( const int k ) { // 代表放開某鍵(F1~F12,上下左右等), true
+void setSpecialKeyStateDown( const int k )   // 代表放開某鍵(F1~F12,上下左右等), true
+{
     specialKeyState[k] = true;
 }
-const bool isKeyStateDown( const unsigned char k ) { // 回傳是否有壓下某鍵
+const bool isKeyStateDown( const unsigned char k )   // 回傳是否有壓下某鍵
+{
     return keyState[k];
 }
-const bool isSpecialKeyStateDown( const int k ) { // 回傳是否有壓下某鍵(F1~F12,上下左右等)
+const bool isSpecialKeyStateDown( const int k )   // 回傳是否有壓下某鍵(F1~F12,上下左右等)
+{
     return specialKeyState[k];
 }
 //============鍵盤所有按鍵是否按下==========(此方法順暢)
-void SpecialKeyUP( int key, int x, int y ) {
+void SpecialKeyUP( int key, int x, int y )
+{
     setSpecialKeyStateUp(key);
 }
-void SpecialKeyDOWN( int key, int x, int y ) {
+void SpecialKeyDOWN( int key, int x, int y )
+{
     setSpecialKeyStateDown(key);
 }
-void keyUP( unsigned char key, int x, int y ) {
+void keyUP( unsigned char key, int x, int y )
+{
     setKeyStateUp(key);
 }
-void keyDOWN( unsigned char key, int x, int y ) {
+void keyDOWN( unsigned char key, int x, int y )
+{
     setKeyStateDown(key);
 }
 //============update_game==========
@@ -1843,233 +2177,386 @@ int check_bound(float x,float y) //==true為在可活動範圍內
 {
 //===========有在可活動範為內會進到if內
 
-        for(int i=0;i<8;i++) {
-            if(!AABBtest(x,y,x,y,bound[i][0],bound[i][1],bound[i][2]+bound[i][4],bound[i][3]+bound[i][5])) {
-                return 0;
-            }
-        }
 
-        return 1;
-        /*if( (1.8/17.4)*x - y + 7.2552 > 0 )
-        {//======在CD兩點連線下方OK (X向右為正, Y向上為正)
-                if( 7.875*x - y + (-2.375) < 0 )
-                {//======在AF兩點連線左側OK (X向右為正, Y向上為正)
-                        if( (0.6 / 6.2)*x - y + (-13.2645) < 0 )
-                        {//======在AB兩點連線上方OK (X向右為正, Y向上為正)
-                                if( 6.5*x - y + 35.4 > 0 )
-                                {//======在BC兩點連線右側OK (X向右為正, Y向上為正)
-                                        return 1; // 玩家在"甲"區域內
-                                }else{
-                                        return 0; // 玩家脫離可移動範圍!!!!!
-                                }
-                        }else{
-                                return 0; // 玩家脫離可移動範圍!!!!!
-                        }
-                }else{
-                //======在AF兩點連線右側&線上OK (X向右為正, Y向上為正)
-                        if( (4/13)*x - y + (-0.8615) < 0 )
-                        {//======在EF兩點連線上方OK (X向右為正, Y向上為正)
-                                if( -27*x - y + 359.6 > 0 )
-                                {//======在DE兩點連線左側OK (X向右為正, Y向上為正)
-                                        return 1; // 玩家在"乙"區域內
-                                }else{
-                                        return 0; // 玩家脫離可移動範圍!!!!!
-                                }
-                        }else{
-                                return 0; // 玩家脫離可移動範圍!!!!!
-                        }
-                }
+    if(y<-5.1)
+    {
+        if((bound[0][1]-bound[1][1])/(bound[0][0]-bound[1][0])*x-y+(bound[0][1]-(bound[0][1]-bound[1][1])/(bound[0][0]-bound[1][0])*bound[0][0])<0)
+        {
+            return 0;
+        }
+    }
+    else if(y<0.95)
+    {
+        if((bound[1][1]-bound[2][1])/(bound[1][0]-bound[2][0])*x-y+(bound[1][1]-(bound[1][1]-bound[2][1])/(bound[1][0]-bound[2][0])*bound[1][0])>0)
+        {
+            return 0;
+        }
+    }
+    else if(y<3.2)
+    {
+        if((bound[2][1]-bound[3][1])/(bound[2][0]-bound[3][0])*x-y+(bound[2][1]-(bound[2][1]-bound[3][1])/(bound[2][0]-bound[3][0])*bound[2][0])>0)
+        {
+            return 0;
+        }
+    }
+    if(y<-3.2)
+    {
+        if((bound[7][1]-bound[6][1])/(bound[7][0]-bound[6][0])*x-y+(bound[7][1]-(bound[7][1]-bound[6][1])/(bound[7][0]-bound[6][0])*bound[7][0])<0)
+        {
+            return 0;
+        }
+    }
+    else if(y<6.8)
+    {
+        if((bound[6][1]-bound[5][1])/(bound[6][0]-bound[5][0])*x-y+(bound[6][1]-(bound[6][1]-bound[5][1])/(bound[6][0]-bound[5][0])*bound[6][0])<0)
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if((bound[5][1]-bound[4][1])/(bound[5][0]-bound[4][0])*x-y+(bound[5][1]-(bound[5][1]-bound[4][1])/(bound[5][0]-bound[4][0])*bound[5][0])<0)
+        {
+            return 0;
+        }
+    }
+    /*for(int i=0;i<8;i++) {
+        if(!AABBtest(x,y,x,y,bound[i][0],bound[i][1],bound[i][2]+bound[i][4],bound[i][3]+bound[i][5])) {
+            return 0;
+        }
+    }*/
+
+    return 1;
+    /*if( (1.8/17.4)*x - y + 7.2552 > 0 )
+    {//======在CD兩點連線下方OK (X向右為正, Y向上為正)
+            if( 7.875*x - y + (-2.375) < 0 )
+            {//======在AF兩點連線左側OK (X向右為正, Y向上為正)
+                    if( (0.6 / 6.2)*x - y + (-13.2645) < 0 )
+                    {//======在AB兩點連線上方OK (X向右為正, Y向上為正)
+                            if( 6.5*x - y + 35.4 > 0 )
+                            {//======在BC兩點連線右側OK (X向右為正, Y向上為正)
+                                    return 1; // 玩家在"甲"區域內
+                            }else{
+                                    return 0; // 玩家脫離可移動範圍!!!!!
+                            }
+                    }else{
+                            return 0; // 玩家脫離可移動範圍!!!!!
+                    }
+            }else{
+            //======在AF兩點連線右側&線上OK (X向右為正, Y向上為正)
+                    if( (4/13)*x - y + (-0.8615) < 0 )
+                    {//======在EF兩點連線上方OK (X向右為正, Y向上為正)
+                            if( -27*x - y + 359.6 > 0 )
+                            {//======在DE兩點連線左側OK (X向右為正, Y向上為正)
+                                    return 1; // 玩家在"乙"區域內
+                            }else{
+                                    return 0; // 玩家脫離可移動範圍!!!!!
+                            }
+                    }else{
+                            return 0; // 玩家脫離可移動範圍!!!!!
+                    }
+            }
     }else{
-                return 0; // 玩家脫離可移動範圍!!!!!
-        }*/
+            return 0; // 玩家脫離可移動範圍!!!!!
+    }*/
 }
 //=================================
 void update_game( int value )
 {
-        //=====處理一般key的部分
-        if ( isKeyStateDown(27) ) { // Esc
-                exit(0); // 結束遊戲
-        }
-        //===================
-        if ( isSpecialKeyStateDown( GLUT_KEY_UP ) ) {
+    //=====處理一般key的部分
+    if ( isKeyStateDown(27) )   // Esc
+    {
+        exit(0); // 結束遊戲
+    }
+    //===================
+    if ( isSpecialKeyStateDown( GLUT_KEY_UP ) )
+    {
         //Actorframe.MoveForward(0.025f);
         //Actor_position_z+=0.2f;
-                if ( gameover == 0 ) { //如果gameover則不能移動
-                        float turnangle=1;
-                        r+=0.8f;
-                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT )) {
-                            r-=0.4f;
-                            turnangle=cos(3.1415926/4);
+        if ( gameover == 0 )   //如果gameover則不能移動
+        {
+            float turnangle=1;
+            r+=0.8f;
+            if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT ))
+            {
+                r-=0.4f;
+                turnangle=cos(3.1415926/4);
 
-                        }
-                        face=0;
-                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )){
-                                face+=7;
-                            }
-                        else if(isSpecialKeyStateDown( GLUT_KEY_LEFT )){
-                                face+=1;
-                            }
-                        if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
-                        {
-                                frameCamera.MoveUp(0.2*turnangle);
-                                targety-=0.2*turnangle;
-                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-                                {
-                                        frameCamera.MoveUp(-0.2*turnangle);
-                                        targety+=0.2*turnangle;
-                                }
-                        }
+            }
+            face=0;
+            if(isSpecialKeyStateDown( GLUT_KEY_RIGHT ))
+            {
+                face+=7;
+            }
+            else if(isSpecialKeyStateDown( GLUT_KEY_LEFT ))
+            {
+                face+=1;
+            }
+            if( check(targetx,targety-0.2) ) //偵測人和蟲是否碰撞
+            {
+                if(targety>=-1.2)
+                {
+                    frameCamera.MoveUp(0.2*turnangle);
                 }
-                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
-                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+                else
+                {
+                    frameCamera.MoveForward(-0.2*turnangle);
+                }
+                targety-=0.2*turnangle;
+                if ( check_bound(targetx,targety) == 0||(targetx>13||targety<-13.8) ) // 如果下一步超出邊界, 回來!!
+                {
+                    if(targety>=-1.2)
+                    {
+                        frameCamera.MoveUp(-0.2*turnangle);
+                    }
+                    else
+                    {
+                        frameCamera.MoveForward(0.2*turnangle);
+                    }
+                    targety+=0.2*turnangle;
+                }
+            }
         }
-        //===================
-    if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) ) {
+        //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+        printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+    }
+    //===================
+    if ( isSpecialKeyStateDown( GLUT_KEY_DOWN ) )
+    {
         //Actorframe.MoveForward(-0.025f);
         //Actor_position_z-=0.2f;
-                if ( gameover == 0 ) { //如果gameover則不能移動
-                        float turnangle=1;
-                        r+=0.8f;
-                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT )) {
-                            r-=0.4f;
-                            turnangle=cos(3.1415926/4);
-                        }
-                        face=4;
-                        if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )){
-                                face+=1;
-                            }
-                        else if(isSpecialKeyStateDown( GLUT_KEY_LEFT )){
-                                face-=1;
-                            }
-                        if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
-                        {
-                                frameCamera.MoveUp(-0.2*turnangle); //====畫面動
-                                targety+=0.2*turnangle;                         //====人動
-                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-                                {
-                                        frameCamera.MoveUp(+0.2*turnangle);
-                                        targety-=0.2*turnangle;
-                                }
-                        }
+        if ( gameover == 0 )   //如果gameover則不能移動
+        {
+            float turnangle=1;
+            r+=0.8f;
+            if(isSpecialKeyStateDown( GLUT_KEY_RIGHT )||isSpecialKeyStateDown( GLUT_KEY_LEFT ))
+            {
+                r-=0.4f;
+                turnangle=cos(3.1415926/4);
+            }
+            face=4;
+            if(isSpecialKeyStateDown( GLUT_KEY_RIGHT ))
+            {
+                face+=1;
+            }
+            else if(isSpecialKeyStateDown( GLUT_KEY_LEFT ))
+            {
+                face-=1;
+            }
+            if( check(targetx,targety+0.2) ) //偵測人和蟲是否碰撞
+            {
+                if(targety>=-1.2)
+                {
+                    frameCamera.MoveUp(-0.2*turnangle);
                 }
-                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
-                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+                else
+                {
+                    frameCamera.MoveForward(0.2*turnangle);
+                } //====畫面動
+                targety+=0.2*turnangle;                         //====人動
+                if ( check_bound(targetx,targety) == 0 ||(targetx>13||targety<-13.8)) // 如果下一步超出邊界, 回來!!
+                {
+                    if(targety>=-1.2)
+                    {
+                        frameCamera.MoveUp(0.2*turnangle);
+                    }
+                    else
+                    {
+                        frameCamera.MoveForward(-0.2*turnangle);
+                    }
+                    targety-=0.2*turnangle;
+                }
+            }
         }
-        //===================
-    if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) ) {
+        //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+        printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+    }
+    //===================
+    if ( isSpecialKeyStateDown( GLUT_KEY_LEFT ) )
+    {
         //Actorframe.RotateLocalY(0.1f);
         //Actor_yRot+=2.0f;
-                if ( gameover == 0 ) { //如果gameover則不能移動
-                        float turnangle=1;
-                        r+=0.8f;
-                        if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN )) {
-                            r-=0.4f;
-                            turnangle=cos(3.1415926/4);
-                        }
-                        face=2;
-                        if(isSpecialKeyStateDown( GLUT_KEY_UP )){
-                                face-=1;
-                            }
-                        else if(isSpecialKeyStateDown( GLUT_KEY_DOWN )){
-                                face+=1;
-                            }
-                        if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
-                        {
-                                frameCamera.MoveRight(0.2*turnangle);
-                                targetx+=0.2*turnangle;
-                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-                                {
-                                        frameCamera.MoveRight(-0.2*turnangle);
-                                        targetx-=0.2*turnangle;
-                                }
-                        }
+        if ( gameover == 0 )   //如果gameover則不能移動
+        {
+            float turnangle=1;
+            r+=0.8f;
+            if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN ))
+            {
+                r-=0.4f;
+                turnangle=cos(3.1415926/4);
+            }
+            face=2;
+            if(isSpecialKeyStateDown( GLUT_KEY_UP ))
+            {
+                face-=1;
+            }
+            else if(isSpecialKeyStateDown( GLUT_KEY_DOWN ))
+            {
+                face+=1;
+            }
+            if( check(targetx+0.2,targety) ) //偵測人和蟲是否碰撞
+            {
+                frameCamera.MoveRight(0.2*turnangle);
+                targetx+=0.2*turnangle;
+                if ( check_bound(targetx,targety) == 0 ||(targetx>13||targety<-13.8)) // 如果下一步超出邊界, 回來!!
+                {
+                    frameCamera.MoveRight(-0.2*turnangle);
+                    targetx-=0.2*turnangle;
                 }
-                //printf("%f\n",check_bound(targetx,targety)); //邊件判定
-                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+            }
         }
-        //===================
-    if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) ) {
+        //printf("%f\n",check_bound(targetx,targety)); //邊件判定
+        printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+    }
+    //===================
+    if ( isSpecialKeyStateDown( GLUT_KEY_RIGHT ) )
+    {
         //Actorframe.RotateLocalY(-0.1f);
-                if ( gameover == 0 ) { //如果gameover則不能移動
-                        r+=0.8f;
-                        float turnangle=1;
-                        if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN )) {
-                            r-=0.4f;
-                            turnangle=cos(3.1415926/4);
-                        }
-                        face=6;
-                        if(isSpecialKeyStateDown( GLUT_KEY_UP )){
-                                face+=1;
-                            }
-                        else if(isSpecialKeyStateDown( GLUT_KEY_DOWN )){
-                                face-=1;
-                            }
-                        if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
-                        {
-                                frameCamera.MoveRight(-0.2*turnangle);
-                                targetx-=0.2*turnangle;
-                                if ( check_bound(targetx,targety) == 0 ) // 如果下一步超出邊界, 回來!!
-                                {
-                                        frameCamera.MoveRight(0.2*turnangle);
-                                        targetx+=0.2*turnangle;
-                                }
-                        }
+        if ( gameover == 0 )   //如果gameover則不能移動
+        {
+            r+=0.8f;
+            float turnangle=1;
+            if(isSpecialKeyStateDown( GLUT_KEY_UP )||isSpecialKeyStateDown( GLUT_KEY_DOWN ))
+            {
+                r-=0.4f;
+                turnangle=cos(3.1415926/4);
+            }
+            face=6;
+            if(isSpecialKeyStateDown( GLUT_KEY_UP ))
+            {
+                face+=1;
+            }
+            else if(isSpecialKeyStateDown( GLUT_KEY_DOWN ))
+            {
+                face-=1;
+            }
+            if( check(targetx-0.2,targety) ) //偵測人和蟲是否碰撞
+            {
+                frameCamera.MoveRight(-0.2*turnangle);
+                targetx-=0.2*turnangle;
+                if ( check_bound(targetx,targety) == 0 ||(targetx>13||targety<-13.8)) // 如果下一步超出邊界, 回來!!
+                {
+                    frameCamera.MoveRight(0.2*turnangle);
+                    targetx+=0.2*turnangle;
                 }
-                //printf("%d\n",check_bound(targetx,targety)); //邊件判定
-                printf("x = %f, y = %f\n",targetx,targety); //邊件判定
+            }
+        }
+        //printf("%d\n",check_bound(targetx,targety)); //邊件判定
+        printf("x = %f, y = %f\n",targetx,targety); //邊件判定
         //Actor_yRot-=2.0f;
+    }
+    //===================
+    if ( isKeyStateDown(' ') )
+    {
+        if ( gameover == 0 )   //20140113
+        {
+            if(timer>=0)
+            {
+                bb[bulletcount].setb();
+                bulletcount++;
+                if(bulletcount>=100)
+                {
+                    bulletcount=0;
+                }
+                timer=-30;
+            }
         }
-        //===================
-    if ( isKeyStateDown(' ') ) {
-                if ( gameover == 0 ) { //20140113
-                        if(timer>=0) {
-                                bb[bulletcount].setb();
-                                bulletcount++;
-                        if(bulletcount>=100) {
-                                bulletcount=0;
-                        }
-                        timer=-30;
-                        }
-                }
+    }
+    //=====處理SpecialKey的部分
+    if( isKeyStateDown('v') || isKeyStateDown('V') )
+    {
+        if ( gameover == 0 )   //20140113
+        {
+            if ( view == 2 )   //90度
+            {
+                world.RotateLocalX(3.14159/view);
+                view = 4;
+                world.RotateLocalX(-3.14159/view);
+            }
+            else if ( view == 4 )   //45度
+            {
+                world.RotateLocalX(3.14159/view);
+                view = 2;
+                world.RotateLocalX(-3.14159/view);
+            }
         }
-        //=====處理SpecialKey的部分
-	if( isKeyStateDown('v') || isKeyStateDown('V') ) {
-                if ( gameover == 0 ) { //20140113
-                        if ( view == 2 ) { //90度
-                            world.RotateLocalX(3.14159/view);
-							view = 4;
-							world.RotateLocalX(-3.14159/view);
-						}else if ( view == 4 ){ //45度
-						    world.RotateLocalX(3.14159/view);
-							view = 2;
-							world.RotateLocalX(-3.14159/view);
-						}
-                }
     }
-    if( isKeyStateDown('x') || isKeyStateDown('X') ) {
-                if ( gameover == 0 ) { //20140113
-                        frameCamera.MoveForward(0.2f);
-                }
+    if( isKeyStateDown('x') || isKeyStateDown('X') )
+    {
+        if ( gameover == 0 )   //20140113
+        {
+            frameCamera.MoveForward(0.2f);
+        }
     }
-        //===================
-    if( isKeyStateDown('z') || isKeyStateDown('Z') ) {
-                if ( gameover == 0 ) { //20140113
-                        frameCamera.MoveForward(-0.2f);
-                }
+    //===================
+    if( isKeyStateDown('z') || isKeyStateDown('Z') )
+    {
+        if ( gameover == 0 )   //20140113
+        {
+            frameCamera.MoveForward(-0.2f);
+        }
     }
-        //===================
-        if( isKeyStateDown('r') || isKeyStateDown('R') ) { // 重新開始遊戲 20140113
-                if ( gameover == 1 ) { //20140113
-                        if ( gamescore >= highscore ) { // 刷新最高分數
-                                highscore = gamescore;
+    //===================
+    if( isKeyStateDown('r') || isKeyStateDown('R') )   // 重新開始遊戲 20140113
+    {
+        if ( gameover == 1 )   //20140113
+        {
+            if ( gamescore >= highscore )   // 刷新最高分數
+            {
+                highscore = gamescore;
+            }
+            gameover = 0;  //======重新開始遊戲!!!
+            gamescore = 0; //======重新開始計分!!!
+
+            headx=0;
+            heady=-1.32;
+            headz=0;
+            headr=0;
+            state=0;
+            bodyy=0;
+            bodyz=0;
+            bodyr=0;
+            num=5;
+            combo=0;
+            for(int i=0; i<num; i++)
+            {
+                test[i].sattack=0;
+                test[i].sattacked=0;
+                test[i].speed=0.02;
+                if(rand()%2==0)
+                {
+                    test[i].setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                }
+                else
+                {
+                    test[i].setlocation(13+rand()%5,3.5+rand()%6,-1);
+                }
+
+                for(int j=0; j<i; j++)
+                {
+                    if(test[j].getx()==test[i].getx())
+                    {
+                        if(test[j].gety()==test[i].gety())
+                        {
+                            if(rand()%2==0)
+                            {
+                                test[i].setlocation(-1.7-rand()%6,-16-rand()%5,-1);
+                            }
+                            else
+                            {
+                                test[i].setlocation(13+rand()%5,3.5+rand()%6,-1);
+                            }
+                            j=-1;
                         }
-                        gameover = 0;  //======重新開始遊戲!!!
-                        gamescore = 0; //======重新開始計分!!!
-                        health = 100;  //======血量重新補滿!!!
+                    }
                 }
+                test[i].setnumber(i);
+            }
+            health = 100;  //======血量重新補滿!!!
+        }
     }
-        // 呼叫myDisplay重畫
-        glutPostRedisplay();
+    // 呼叫myDisplay重畫
+    glutPostRedisplay();
     glutTimerFunc( 33, update_game, 0);
 }
 //============主程式============
@@ -2102,3 +2589,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
